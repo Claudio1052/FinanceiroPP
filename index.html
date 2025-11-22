@@ -419,7 +419,7 @@
                 </div>
                 <div class="filter-group">
                     <label for="valor">Valor Mínimo</label>
-                    <input type="number" id="valor" placeholder="Digite o valor mínimo">
+                    <input type="number" id="valor" placeholder="Digite o valor mínimo" step="0.01">
                 </div>
                 <div class="filter-group">
                     <label for="status">Status</label>
@@ -453,6 +453,19 @@
                 <i class="fas fa-spinner fa-spin"></i>
                 <p>Conectando ao Mercado Pago...</p>
             </div>
+            <table style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Chave Pix</th>
+                        <th>Nome</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
     </div>
     
@@ -477,10 +490,11 @@
         const chavePixInput = document.getElementById('chave-pix');
         const valorInput = document.getElementById('valor');
         const statusSelect = document.getElementById('status');
-        const tbody = document.querySelector('tbody');
         const transactionsCount = document.querySelector('.transactions-count');
         const transactionsDiv = document.querySelector('.transactions');
         const loadingDiv = document.querySelector('.loading');
+        const table = document.querySelector('table');
+        const tbody = document.querySelector('tbody');
 
         let allTransactions = [];
         let filteredTransactions = [];
@@ -490,17 +504,12 @@
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
         }
 
-        // Converter data para formato ISO
-        function formatarDataISO(data) {
-            if (!data) return '';
-            const partes = data.split('/');
-            return `${partes[2]}-${partes[1]}-${partes[0]}`;
-        }
-
-        // Buscar movimentos da conta
+        // Buscar movimentos da conta de forma otimizada
         async function buscarMovimentos() {
             try {
                 loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Buscando transações...</p>';
+                loadingDiv.style.display = 'block';
+                table.style.display = 'none';
                 
                 const hoje = new Date();
                 const trintaDiasAtras = new Date();
@@ -509,8 +518,12 @@
                 const dataInicio = dataInicioInput.value || trintaDiasAtras.toISOString().split('T')[0];
                 const dataFim = dataFimInput.value || hoje.toISOString().split('T')[0];
                 
-                // URL para buscar movimentos da conta
-                const url = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&range=date_created&begin_date=${dataInicio}T00:00:00.000-00:00&end_date=${dataFim}T23:59:59.000-00:00&limit=100`;
+                console.log('Buscando transações de:', dataInicio, 'até', dataFim);
+                
+                // URL para buscar movimentos - limitando para 50 resultados para carregar mais rápido
+                const url = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&range=date_created&begin_date=${dataInicio}T00:00:00.000-00:00&end_date=${dataFim}T23:59:59.000-00:00&limit=50`;
+                
+                console.log('URL da API:', url);
                 
                 const response = await fetch(url, {
                     headers: {
@@ -524,11 +537,13 @@
                 }
                 
                 const data = await response.json();
+                console.log('Dados recebidos:', data);
                 
                 if (data.results && data.results.length > 0) {
                     processarMovimentos(data.results);
                 } else {
-                    throw new Error('Nenhuma transação encontrada no período selecionado');
+                    // Se não encontrar pagamentos, tenta buscar movimentos da conta
+                    await buscarMovimentosConta(dataInicio, dataFim);
                 }
                 
             } catch (error) {
@@ -537,8 +552,41 @@
             }
         }
 
-        // Processar movimentos da API
+        // Buscar movimentos da conta (fallback)
+        async function buscarMovimentosConta(dataInicio, dataFim) {
+            try {
+                console.log('Tentando buscar movimentos da conta...');
+                const url = `${API_BASE_URL}/v1/balance/history?range=date_created&begin_date=${dataInicio}T00:00:00.000-00:00&end_date=${dataFim}T23:59:59.000-00:00&limit=50`;
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Movimentos da conta:', data);
+                    
+                    if (data && data.length > 0) {
+                        processarMovimentosConta(data);
+                    } else {
+                        throw new Error('Nenhuma transação encontrada no período selecionado');
+                    }
+                } else {
+                    throw new Error('Nenhuma transação encontrada');
+                }
+            } catch (error) {
+                console.error('Erro ao buscar movimentos da conta:', error);
+                throw error;
+            }
+        }
+
+        // Processar movimentos da API de pagamentos
         function processarMovimentos(movimentos) {
+            console.log('Processando', movimentos.length, 'movimentos');
+            
             allTransactions = movimentos.map(mov => {
                 // Determinar tipo baseado no transaction_amount
                 const tipo = mov.transaction_amount >= 0 ? 'credit' : 'debit';
@@ -574,9 +622,38 @@
                 };
             });
             
+            console.log('Transações processadas:', allTransactions);
             aplicarFiltros();
             atualizarContadores();
             loadingDiv.style.display = 'none';
+            table.style.display = 'table';
+        }
+
+        // Processar movimentos da conta
+        function processarMovimentosConta(movimentos) {
+            console.log('Processando', movimentos.length, 'movimentos da conta');
+            
+            allTransactions = movimentos.map(mov => {
+                const tipo = mov.amount >= 0 ? 'credit' : 'debit';
+                
+                return {
+                    id: mov.id,
+                    data: new Date(mov.date_created).toLocaleDateString('pt-BR'),
+                    dataISO: mov.date_created.split('T')[0],
+                    tipo: tipo,
+                    chavePix: 'Movimento de conta',
+                    nome: mov.detail || 'Movimento não identificado',
+                    valor: Math.abs(mov.amount || 0),
+                    status: 'processed',
+                    descricao: mov.detail || 'Sem descrição'
+                };
+            });
+            
+            console.log('Movimentos da conta processados:', allTransactions);
+            aplicarFiltros();
+            atualizarContadores();
+            loadingDiv.style.display = 'none';
+            table.style.display = 'table';
         }
 
         // Atualizar contadores
@@ -601,12 +678,15 @@
 
         // Renderizar transações
         function renderizarTransacoes(transacoes) {
-            if (!tbody) return;
+            if (!tbody) {
+                console.error('Elemento tbody não encontrado');
+                return;
+            }
             
             tbody.innerHTML = '';
             
             if (transacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhuma transação encontrada</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;">Nenhuma transação encontrada com os filtros aplicados</td></tr>';
                 transactionsCount.textContent = 'Mostrando 0 de 0 transações';
                 return;
             }
@@ -621,7 +701,8 @@
                 const valorClass = transacao.tipo === 'credit' ? 'entrada-amount' : 'saida-amount';
                 const statusText = transacao.status === 'approved' ? 'Aprovado' : 
                                  transacao.status === 'pending' ? 'Pendente' : 
-                                 transacao.status === 'cancelled' ? 'Cancelado' : transacao.status;
+                                 transacao.status === 'cancelled' ? 'Cancelado' : 
+                                 transacao.status === 'processed' ? 'Processado' : transacao.status;
                 
                 tr.innerHTML = `
                     <td>${transacao.data}</td>
@@ -712,30 +793,15 @@
         limparFiltrosBtn.addEventListener('click', limparFiltros);
         atualizarDadosBtn.addEventListener('click', buscarMovimentos);
 
+        // Adicionar eventos em tempo real para os filtros
+        chavePixInput.addEventListener('input', aplicarFiltros);
+        valorInput.addEventListener('input', aplicarFiltros);
+        tipoSelect.addEventListener('change', aplicarFiltros);
+        statusSelect.addEventListener('change', aplicarFiltros);
+
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
-            // Criar tabela se não existir
-            if (!document.querySelector('table')) {
-                const tableHTML = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>Tipo</th>
-                                <th>Chave Pix</th>
-                                <th>Nome</th>
-                                <th>Valor</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                `;
-                transactionsDiv.insertAdjacentHTML('beforeend', tableHTML);
-            }
-            
-            // Atualizar referência do tbody
-            tbody = document.querySelector('tbody');
+            console.log('Inicializando sistema...');
             
             // Definir datas padrão (últimos 30 dias)
             const hoje = new Date();
@@ -746,7 +812,9 @@
             dataFimInput.value = hoje.toISOString().split('T')[0];
             
             // Buscar dados iniciais
-            buscarMovimentos();
+            setTimeout(() => {
+                buscarMovimentos();
+            }, 500);
         });
     </script>
 </body>
