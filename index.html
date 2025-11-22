@@ -317,6 +317,15 @@
             border-left: 4px solid var(--danger);
         }
         
+        .credentials-info {
+            background-color: rgba(0, 158, 227, 0.1);
+            color: var(--primary);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary);
+        }
+        
         footer {
             text-align: center;
             margin-top: 40px;
@@ -362,6 +371,11 @@
         <div class="connection-status status-connected">
             <i class="fas fa-check-circle"></i>
             <span>Conectando ao Mercado Pago...</span>
+        </div>
+        
+        <div class="credentials-info">
+            <i class="fas fa-key"></i>
+            <span>Usando credenciais reais do Mercado Pago</span>
         </div>
         
         <div class="dashboard-cards">
@@ -465,11 +479,8 @@
     </footer>
 
     <script>
-        // Credenciais do Mercado Pago - CORRIGIDAS
+        // Credenciais CORRIGIDAS do Mercado Pago - baseadas na sua imagem
         const ACCESS_TOKEN = 'APP_USR-7673915868031564-112114-bc0bacb2f8256ccc49eb275d1367e613-270554505';
-        
-        // Usando um proxy CORS para contornar restrições do navegador
-        const API_PROXY = 'https://cors-anywhere.herokuapp.com/';
         const API_BASE_URL = 'https://api.mercadopago.com';
 
         // Elementos DOM
@@ -496,21 +507,22 @@
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
         }
 
-        // Função para fazer requisições à API com tratamento de CORS
+        // Função para fazer requisições à API
         async function fazerRequisicaoAPI(url) {
             try {
                 console.log('Fazendo requisição para:', url);
                 
-                const response = await fetch(API_PROXY + url, {
+                const response = await fetch(url, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'Content-Type': 'application/json'
                     }
                 });
 
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Resposta de erro:', errorText);
                     throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
                 }
 
@@ -525,7 +537,9 @@
         // Buscar saldo da conta
         async function buscarSaldo() {
             try {
+                console.log('Buscando saldo...');
                 const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/balance`);
+                console.log('Saldo recebido:', data);
                 return data;
             } catch (error) {
                 console.error('Erro ao buscar saldo:', error);
@@ -541,14 +555,32 @@
                 table.style.display = 'none';
                 
                 const hoje = new Date();
-                const trintaDiasAtras = new Date();
-                trintaDiasAtras.setDate(hoje.getDate() - 90); // 90 dias para pegar mais transações
+                const sessentaDiasAtras = new Date();
+                sessentaDiasAtras.setDate(hoje.getDate() - 60);
                 
-                const dataInicio = dataInicioInput.value || trintaDiasAtras.toISOString().split('T')[0];
+                const dataInicio = dataInicioInput.value || sessentaDiasAtras.toISOString().split('T')[0];
                 const dataFim = dataFimInput.value || hoje.toISOString().split('T')[0];
 
-                // Buscar pagamentos
-                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&range=date_created&begin_date=${dataInicio}T00:00:00.000-00:00&end_date=${dataFim}T23:59:59.000-00:00&limit=100`;
+                console.log('Buscando transações de:', dataInicio, 'até', dataFim);
+
+                // Primeiro tentar buscar o saldo para verificar se as credenciais funcionam
+                try {
+                    const saldo = await buscarSaldo();
+                    console.log('✅ Credenciais válidas - Saldo encontrado');
+                    
+                    // Atualizar cards com informações do saldo
+                    if (saldo.available_balance !== undefined) {
+                        const saldoDisponivel = saldo.available_balance.amount || 0;
+                        document.querySelector('.card.total .value').textContent = formatarValor(saldoDisponivel);
+                        document.querySelector('.card.total p').textContent = 'Saldo disponível';
+                    }
+                    
+                } catch (saldoError) {
+                    console.log('Não foi possível buscar saldo, mas continuando...', saldoError);
+                }
+
+                // Buscar pagamentos usando o endpoint correto da documentação
+                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&range=date_created&begin_date=${dataInicio}T00:00:00.000-00:00&end_date=${dataFim}T23:59:59.000-00:00&limit=50`;
                 
                 console.log('Buscando pagamentos...');
                 const dadosPagamentos = await fazerRequisicaoAPI(urlPagamentos);
@@ -556,55 +588,55 @@
                 if (dadosPagamentos.results && dadosPagamentos.results.length > 0) {
                     processarDadosReais(dadosPagamentos.results, 'pagamentos');
                 } else {
-                    // Tentar buscar movimentos da conta se não encontrar pagamentos
-                    await buscarMovimentosConta(dataInicio, dataFim);
+                    // Tentar buscar sem filtros de data
+                    console.log('Nenhum pagamento encontrado, tentando busca sem filtros...');
+                    const urlSimples = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=50`;
+                    const dadosSimples = await fazerRequisicaoAPI(urlSimples);
+                    
+                    if (dadosSimples.results && dadosSimples.results.length > 0) {
+                        processarDadosReais(dadosSimples.results, 'pagamentos');
+                    } else {
+                        throw new Error('Nenhuma transação encontrada na conta');
+                    }
                 }
                 
             } catch (error) {
                 console.error('Erro ao buscar movimentos:', error);
-                mostrarErro(`Erro ao buscar transações: ${error.message}. Tentando método alternativo...`);
+                mostrarErro(`Erro: ${error.message}`);
                 
-                // Tentar método alternativo
-                await tentarMetodoAlternativo();
+                // Tentar método alternativo - buscar movimentos da conta
+                try {
+                    await buscarMovimentosConta();
+                } catch (contaError) {
+                    console.error('Método alternativo também falhou:', contaError);
+                    mostrarErro(`Não foi possível carregar transações. Verifique se há transações na sua conta.`);
+                }
             }
         }
 
         // Buscar movimentos da conta (método alternativo)
-        async function buscarMovimentosConta(dataInicio, dataFim) {
+        async function buscarMovimentosConta() {
             try {
                 console.log('Tentando buscar movimentos da conta...');
-                const urlMovimentos = `${API_BASE_URL}/v1/balance/history?range=date_created&begin_date=${dataInicio}T00:00:00.000-00:00&end_date=${dataFim}T23:59:59.000-00:00&limit=100`;
+                const hoje = new Date();
+                const sessentaDiasAtras = new Date();
+                sessentaDiasAtras.setDate(hoje.getDate() - 60);
+                
+                const dataInicio = dataInicioInput.value || sessentaDiasAtras.toISOString().split('T')[0];
+                const dataFim = dataFimInput.value || hoje.toISOString().split('T')[0];
+                
+                const urlMovimentos = `${API_BASE_URL}/v1/balance/history?range=date_created&begin_date=${dataInicio}T00:00:00.000-00:00&end_date=${dataFim}T23:59:59.000-00:00&limit=50`;
                 
                 const dadosMovimentos = await fazerRequisicaoAPI(urlMovimentos);
                 
                 if (dadosMovimentos && dadosMovimentos.length > 0) {
                     processarDadosReais(dadosMovimentos, 'movimentos');
                 } else {
-                    throw new Error('Nenhuma transação encontrada');
+                    throw new Error('Nenhum movimento encontrado');
                 }
             } catch (error) {
                 console.error('Erro ao buscar movimentos da conta:', error);
                 throw error;
-            }
-        }
-
-        // Método alternativo - buscar dados básicos
-        async function tentarMetodoAlternativo() {
-            try {
-                console.log('Tentando método alternativo...');
-                
-                // Buscar apenas os pagamentos mais recentes sem filtros complexos
-                const urlSimples = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=50`;
-                const dados = await fazerRequisicaoAPI(urlSimples);
-                
-                if (dados.results && dados.results.length > 0) {
-                    processarDadosReais(dados.results, 'pagamentos');
-                } else {
-                    throw new Error('Nenhum dado encontrado na API');
-                }
-            } catch (error) {
-                console.error('Método alternativo também falhou:', error);
-                mostrarErro(`Não foi possível conectar com a API do Mercado Pago. Verifique suas credenciais e conexão.`);
             }
         }
 
@@ -694,8 +726,11 @@
             document.querySelector('.card.saida .value').textContent = formatarValor(saidas);
             document.querySelector('.card.saida p').textContent = 'Saídas totais';
             
-            document.querySelector('.card.total .value').textContent = formatarValor(entradas - saidas);
-            document.querySelector('.card.total p').textContent = 'Saldo líquido';
+            // Se não tivermos saldo da API, calcular saldo líquido
+            if (document.querySelector('.card.total .value').textContent === 'R$ 0,00') {
+                document.querySelector('.card.total .value').textContent = formatarValor(entradas - saidas);
+                document.querySelector('.card.total p').textContent = 'Saldo líquido';
+            }
         }
 
         // Renderizar transações
@@ -783,12 +818,12 @@
             valorInput.value = '';
             statusSelect.value = '';
             
-            // Definir datas padrão (últimos 90 dias)
+            // Definir datas padrão (últimos 60 dias)
             const hoje = new Date();
-            const noventaDiasAtras = new Date();
-            noventaDiasAtras.setDate(hoje.getDate() - 90);
+            const sessentaDiasAtras = new Date();
+            sessentaDiasAtras.setDate(hoje.getDate() - 60);
             
-            dataInicioInput.value = noventaDiasAtras.toISOString().split('T')[0];
+            dataInicioInput.value = sessentaDiasAtras.toISOString().split('T')[0];
             dataFimInput.value = hoje.toISOString().split('T')[0];
             
             aplicarFiltros();
@@ -806,6 +841,8 @@
             
             connectionStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Erro na Conexão</span>';
             connectionStatus.className = 'connection-status status-disconnected';
+            
+            loadingDiv.innerHTML = `<i class="fas fa-times-circle"></i><p>Erro ao carregar dados</p>`;
         }
 
         // Mostrar sucesso
@@ -834,12 +871,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log('Inicializando sistema com credenciais reais...');
             
-            // Definir datas padrão (últimos 90 dias)
+            // Definir datas padrão (últimos 60 dias)
             const hoje = new Date();
-            const noventaDiasAtras = new Date();
-            noventaDiasAtras.setDate(hoje.getDate() - 90);
+            const sessentaDiasAtras = new Date();
+            sessentaDiasAtras.setDate(hoje.getDate() - 60);
             
-            dataInicioInput.value = noventaDiasAtras.toISOString().split('T')[0];
+            dataInicioInput.value = sessentaDiasAtras.toISOString().split('T')[0];
             dataFimInput.value = hoje.toISOString().split('T')[0];
             
             // Iniciar carregamento dos dados reais
