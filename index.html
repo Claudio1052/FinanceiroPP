@@ -267,26 +267,6 @@
             color: var(--danger);
         }
         
-        .pagination {
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-            gap: 10px;
-        }
-        
-        .pagination button {
-            padding: 8px 15px;
-            background-color: white;
-            border: 1px solid var(--border);
-            border-radius: 5px;
-        }
-        
-        .pagination button.active {
-            background-color: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-        
         .loading {
             text-align: center;
             padding: 40px;
@@ -326,6 +306,15 @@
             background-color: rgba(240, 68, 73, 0.1);
             color: var(--danger);
             border-left: 4px solid var(--danger);
+        }
+        
+        .demo-data-notice {
+            background-color: rgba(255, 241, 89, 0.2);
+            color: #8a6d3b;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--secondary);
         }
         
         footer {
@@ -373,6 +362,11 @@
         <div class="connection-status status-connected">
             <i class="fas fa-check-circle"></i>
             <span>Conectado ao Mercado Pago</span>
+        </div>
+        
+        <div class="demo-data-notice">
+            <i class="fas fa-info-circle"></i>
+            <span>Mostrando dados de demonstração. Configure o backend para conectar com a API real.</span>
         </div>
         
         <div class="dashboard-cards">
@@ -451,7 +445,7 @@
             </div>
             <div class="loading">
                 <i class="fas fa-spinner fa-spin"></i>
-                <p>Conectando ao Mercado Pago...</p>
+                <p>Carregando transações...</p>
             </div>
             <table style="display: none;">
                 <thead>
@@ -478,7 +472,6 @@
     <script>
         // Credenciais do Mercado Pago
         const ACCESS_TOKEN = 'APP_USR-7673915868031564-112114-bc0bacb2f8256ccc49eb275d1367e613-270554505';
-        const API_BASE_URL = 'https://api.mercadopago.com';
 
         // Elementos DOM
         const aplicarFiltrosBtn = document.getElementById('aplicar-filtros');
@@ -491,7 +484,6 @@
         const valorInput = document.getElementById('valor');
         const statusSelect = document.getElementById('status');
         const transactionsCount = document.querySelector('.transactions-count');
-        const transactionsDiv = document.querySelector('.transactions');
         const loadingDiv = document.querySelector('.loading');
         const table = document.querySelector('table');
         const tbody = document.querySelector('tbody');
@@ -504,152 +496,191 @@
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
         }
 
-        // Buscar movimentos da conta de forma otimizada
-        async function buscarMovimentos() {
-            try {
-                loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Buscando transações...</p>';
-                loadingDiv.style.display = 'block';
-                table.style.display = 'none';
-                
-                const hoje = new Date();
-                const trintaDiasAtras = new Date();
-                trintaDiasAtras.setDate(hoje.getDate() - 30);
-                
-                const dataInicio = dataInicioInput.value || trintaDiasAtras.toISOString().split('T')[0];
-                const dataFim = dataFimInput.value || hoje.toISOString().split('T')[0];
-                
-                console.log('Buscando transações de:', dataInicio, 'até', dataFim);
-                
-                // URL para buscar movimentos - limitando para 50 resultados para carregar mais rápido
-                const url = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&range=date_created&begin_date=${dataInicio}T00:00:00.000-00:00&end_date=${dataFim}T23:59:59.000-00:00&limit=50`;
-                
-                console.log('URL da API:', url);
-                
-                const response = await fetch(url, {
-                    headers: {
-                        'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Erro na API: ${response.status} ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                console.log('Dados recebidos:', data);
-                
-                if (data.results && data.results.length > 0) {
-                    processarMovimentos(data.results);
-                } else {
-                    // Se não encontrar pagamentos, tenta buscar movimentos da conta
-                    await buscarMovimentosConta(dataInicio, dataFim);
-                }
-                
-            } catch (error) {
-                console.error('Erro ao buscar movimentos:', error);
-                mostrarErro(`Erro ao conectar com Mercado Pago: ${error.message}`);
-            }
-        }
-
-        // Buscar movimentos da conta (fallback)
-        async function buscarMovimentosConta(dataInicio, dataFim) {
-            try {
-                console.log('Tentando buscar movimentos da conta...');
-                const url = `${API_BASE_URL}/v1/balance/history?range=date_created&begin_date=${dataInicio}T00:00:00.000-00:00&end_date=${dataFim}T23:59:59.000-00:00&limit=50`;
-                
-                const response = await fetch(url, {
-                    headers: {
-                        'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Movimentos da conta:', data);
-                    
-                    if (data && data.length > 0) {
-                        processarMovimentosConta(data);
-                    } else {
-                        throw new Error('Nenhuma transação encontrada no período selecionado');
-                    }
-                } else {
-                    throw new Error('Nenhuma transação encontrada');
-                }
-            } catch (error) {
-                console.error('Erro ao buscar movimentos da conta:', error);
-                throw error;
-            }
-        }
-
-        // Processar movimentos da API de pagamentos
-        function processarMovimentos(movimentos) {
-            console.log('Processando', movimentos.length, 'movimentos');
+        // Dados de demonstração para quando a API falhar
+        function carregarDadosDemonstracao() {
+            console.log('Carregando dados de demonstração...');
             
-            allTransactions = movimentos.map(mov => {
-                // Determinar tipo baseado no transaction_amount
-                const tipo = mov.transaction_amount >= 0 ? 'credit' : 'debit';
-                
-                // Extrair informações do pagador/cobrado
-                let nome = 'Não identificado';
-                let chavePix = 'N/A';
-                
-                if (mov.payer) {
-                    nome = mov.payer.first_name || '';
-                    if (mov.payer.last_name) {
-                        nome += ' ' + mov.payer.last_name;
-                    }
-                    
-                    // Tentar extrair chave Pix de diferentes campos
-                    if (mov.payer.email) {
-                        chavePix = mov.payer.email;
-                    } else if (mov.payer.identification && mov.payer.identification.number) {
-                        chavePix = mov.payer.identification.number;
-                    }
+            const dadosDemonstracao = [
+                {
+                    id: 1,
+                    data: '15/11/2023',
+                    tipo: 'credit',
+                    chavePix: '11987654321',
+                    nome: 'João Silva',
+                    valor: 150.00,
+                    status: 'approved',
+                    descricao: 'Transferência PIX'
+                },
+                {
+                    id: 2,
+                    data: '14/11/2023',
+                    tipo: 'debit',
+                    chavePix: 'supermercado@email.com',
+                    nome: 'Supermercado Preço Baixo',
+                    valor: 245.80,
+                    status: 'approved',
+                    descricao: 'Compra no estabelecimento'
+                },
+                {
+                    id: 3,
+                    data: '12/11/2023',
+                    tipo: 'credit',
+                    chavePix: '123.456.789-00',
+                    nome: 'Maria Oliveira',
+                    valor: 300.00,
+                    status: 'approved',
+                    descricao: 'Pagamento recebido'
+                },
+                {
+                    id: 4,
+                    data: '10/11/2023',
+                    tipo: 'debit',
+                    chavePix: 'posto@email.com',
+                    nome: 'Posto de Gasolina',
+                    valor: 120.00,
+                    status: 'approved',
+                    descricao: 'Abastecimento'
+                },
+                {
+                    id: 5,
+                    data: '08/11/2023',
+                    tipo: 'credit',
+                    chavePix: 'empresa@dominio.com.br',
+                    nome: 'Empresa XYZ Ltda',
+                    valor: 1200.00,
+                    status: 'approved',
+                    descricao: 'Pagamento de serviço'
+                },
+                {
+                    id: 6,
+                    data: '05/11/2023',
+                    tipo: 'debit',
+                    chavePix: 'restaurante@email.com',
+                    nome: 'Restaurante Sabor Caseiro',
+                    valor: 85.50,
+                    status: 'approved',
+                    descricao: 'Jantar'
+                },
+                {
+                    id: 7,
+                    data: '03/11/2023',
+                    tipo: 'credit',
+                    chavePix: '11987654321',
+                    nome: 'Carlos Santos',
+                    valor: 75.00,
+                    status: 'pending',
+                    descricao: 'Transferência PIX'
+                },
+                {
+                    id: 8,
+                    data: '01/11/2023',
+                    tipo: 'debit',
+                    chavePix: 'loja@email.com',
+                    nome: 'Loja de Eletrônicos',
+                    valor: 899.90,
+                    status: 'approved',
+                    descricao: 'Compra online'
                 }
-                
-                return {
-                    id: mov.id,
-                    data: new Date(mov.date_created).toLocaleDateString('pt-BR'),
-                    dataISO: mov.date_created.split('T')[0],
-                    tipo: tipo,
-                    chavePix: chavePix,
-                    nome: nome.trim() || 'Pagamento não identificado',
-                    valor: Math.abs(mov.transaction_amount || 0),
-                    status: mov.status,
-                    descricao: mov.description || 'Sem descrição'
-                };
-            });
-            
-            console.log('Transações processadas:', allTransactions);
+            ];
+
+            allTransactions = dadosDemonstracao;
             aplicarFiltros();
             atualizarContadores();
             loadingDiv.style.display = 'none';
             table.style.display = 'table';
+            
+            // Atualizar status para mostrar que são dados de demonstração
+            document.querySelector('.connection-status').innerHTML = 
+                '<i class="fas fa-info-circle"></i><span>Modo Demonstração - Dados de Exemplo</span>';
+            document.querySelector('.connection-status').className = 'connection-status status-disconnected';
         }
 
-        // Processar movimentos da conta
-        function processarMovimentosConta(movimentos) {
-            console.log('Processando', movimentos.length, 'movimentos da conta');
-            
-            allTransactions = movimentos.map(mov => {
-                const tipo = mov.amount >= 0 ? 'credit' : 'debit';
+        // Tentar buscar dados da API com fallback para demonstração
+        async function buscarDados() {
+            try {
+                loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Conectando com Mercado Pago...</p>';
+                loadingDiv.style.display = 'block';
+                table.style.display = 'none';
+
+                // Tentar buscar da API real
+                await buscarDadosAPI();
                 
+            } catch (error) {
+                console.log('Falha na API, usando dados de demonstração:', error);
+                // Se a API falhar, usar dados de demonstração após 2 segundos
+                setTimeout(carregarDadosDemonstracao, 2000);
+            }
+        }
+
+        // Buscar dados da API do Mercado Pago
+        async function buscarDadosAPI() {
+            return new Promise((resolve, reject) => {
+                // Simular timeout de 5 segundos para a API
+                setTimeout(() => {
+                    reject(new Error('Timeout na conexão com a API'));
+                }, 5000);
+
+                // Tentar fazer a requisição real
+                fetch('https://api.mercadopago.com/v1/payments/search?limit=10', {
+                    headers: {
+                        'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.results && data.results.length > 0) {
+                        processarDadosReais(data.results);
+                        resolve();
+                    } else {
+                        throw new Error('Nenhum dado encontrado');
+                    }
+                })
+                .catch(error => {
+                    reject(error);
+                });
+            });
+        }
+
+        // Processar dados reais da API
+        function processarDadosReais(dados) {
+            console.log('Processando dados reais da API:', dados);
+            
+            allTransactions = dados.map(item => {
+                const tipo = item.transaction_amount >= 0 ? 'credit' : 'debit';
+                let nome = 'Não identificado';
+                let chavePix = 'N/A';
+
+                if (item.payer) {
+                    nome = item.payer.first_name || '';
+                    if (item.payer.last_name) {
+                        nome += ' ' + item.payer.last_name;
+                    }
+                    
+                    if (item.payer.email) {
+                        chavePix = item.payer.email;
+                    } else if (item.payer.identification && item.payer.identification.number) {
+                        chavePix = item.payer.identification.number;
+                    }
+                }
+
                 return {
-                    id: mov.id,
-                    data: new Date(mov.date_created).toLocaleDateString('pt-BR'),
-                    dataISO: mov.date_created.split('T')[0],
+                    id: item.id,
+                    data: new Date(item.date_created).toLocaleDateString('pt-BR'),
                     tipo: tipo,
-                    chavePix: 'Movimento de conta',
-                    nome: mov.detail || 'Movimento não identificado',
-                    valor: Math.abs(mov.amount || 0),
-                    status: 'processed',
-                    descricao: mov.detail || 'Sem descrição'
+                    chavePix: chavePix,
+                    nome: nome.trim() || 'Pagamento não identificado',
+                    valor: Math.abs(item.transaction_amount || 0),
+                    status: item.status,
+                    descricao: item.description || 'Sem descrição'
                 };
             });
-            
-            console.log('Movimentos da conta processados:', allTransactions);
+
             aplicarFiltros();
             atualizarContadores();
             loadingDiv.style.display = 'none';
@@ -678,10 +709,7 @@
 
         // Renderizar transações
         function renderizarTransacoes(transacoes) {
-            if (!tbody) {
-                console.error('Elemento tbody não encontrado');
-                return;
-            }
+            if (!tbody) return;
             
             tbody.innerHTML = '';
             
@@ -775,23 +803,10 @@
             aplicarFiltros();
         }
 
-        // Mostrar erro
-        function mostrarErro(mensagem) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error';
-            errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${mensagem}`;
-            
-            const container = document.querySelector('.container');
-            const primeiroFilho = container.children[1];
-            container.insertBefore(errorDiv, primeiroFilho);
-            
-            loadingDiv.innerHTML = `<i class="fas fa-times-circle"></i><p>Erro ao carregar dados</p>`;
-        }
-
         // Event listeners
         aplicarFiltrosBtn.addEventListener('click', aplicarFiltros);
         limparFiltrosBtn.addEventListener('click', limparFiltros);
-        atualizarDadosBtn.addEventListener('click', buscarMovimentos);
+        atualizarDadosBtn.addEventListener('click', buscarDados);
 
         // Adicionar eventos em tempo real para os filtros
         chavePixInput.addEventListener('input', aplicarFiltros);
@@ -811,10 +826,8 @@
             dataInicioInput.value = trintaDiasAtras.toISOString().split('T')[0];
             dataFimInput.value = hoje.toISOString().split('T')[0];
             
-            // Buscar dados iniciais
-            setTimeout(() => {
-                buscarMovimentos();
-            }, 500);
+            // Iniciar carregamento dos dados
+            buscarDados();
         });
     </script>
 </body>
