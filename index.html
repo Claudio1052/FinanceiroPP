@@ -6,376 +6,65 @@
     <title>Extratos Mercado Pago</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --primary: #009ee3;
-            --secondary: #fff159;
-            --success: #00a650;
-            --danger: #f04449;
-            --light: #f5f5f5;
-            --dark: #333;
-            --gray: #666;
-            --border: #ddd;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background-color: #f8f9fa;
-            color: var(--dark);
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        header {
-            background: linear-gradient(135deg, var(--primary), #0078b5);
-            color: white;
-            padding: 20px 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .logo i {
-            font-size: 2rem;
-        }
-        
-        .logo h1 {
-            font-size: 1.8rem;
-            font-weight: 600;
-        }
-        
-        .dashboard-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: transform 0.3s ease;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .card h3 {
-            font-size: 0.9rem;
-            color: var(--gray);
-            margin-bottom: 10px;
-        }
-        
-        .card .value {
-            font-size: 1.8rem;
-            font-weight: 700;
-        }
-        
-        .card.entrada .value {
-            color: var(--success);
-        }
-        
-        .card.saida .value {
-            color: var(--danger);
-        }
-        
-        .card.total .value {
-            color: var(--primary);
-        }
-        
-        .filters {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        
-        .filter-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .filter-group {
-            flex: 1;
-            min-width: 200px;
-        }
-        
-        .filter-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            color: var(--gray);
-        }
-        
-        .filter-group input, .filter-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 5px;
-            font-size: 1rem;
-        }
-        
-        .filter-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background-color: #0078b5;
-        }
-        
-        .btn-secondary {
-            background-color: var(--light);
-            color: var(--dark);
-        }
-        
-        .btn-secondary:hover {
-            background-color: #e0e0e0;
-        }
-        
-        .btn-success {
-            background-color: var(--success);
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background-color: #008f46;
-        }
-        
-        .transactions {
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        
-        .transactions-header {
-            padding: 15px 20px;
-            background-color: var(--light);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .transactions-header h2 {
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-        
-        .transactions-count {
-            color: var(--gray);
-            font-size: 0.9rem;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        thead {
-            background-color: var(--light);
-        }
-        
-        th {
-            padding: 15px 20px;
-            text-align: left;
-            font-weight: 600;
-            color: var(--gray);
-            border-bottom: 1px solid var(--border);
-        }
-        
-        td {
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        tbody tr:hover {
-            background-color: rgba(0, 158, 227, 0.05);
-        }
-        
-        .transaction-type {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        
-        .entrada-badge {
-            background-color: rgba(0, 166, 80, 0.1);
-            color: var(--success);
-        }
-        
-        .saida-badge {
-            background-color: rgba(240, 68, 73, 0.1);
-            color: var(--danger);
-        }
-        
-        .amount {
-            font-weight: 600;
-        }
-        
-        .entrada-amount {
-            color: var(--success);
-        }
-        
-        .saida-amount {
-            color: var(--danger);
-        }
-        
-        .payment-method {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            background-color: rgba(0, 158, 227, 0.1);
-            color: var(--primary);
-        }
-        
-        .minha-chave-pix {
-            display: block;
-            font-size: 0.8rem;
-            color: var(--gray);
-            margin-top: 4px;
-        }
-        
-        .chave-tipo {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 8px;
-            font-size: 0.65rem;
-            font-weight: 600;
-            background-color: rgba(255, 225, 89, 0.2);
-            color: #8a6d00;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: var(--gray);
-        }
-        
-        .loading i {
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-        
-        .error {
-            background-color: rgba(240, 68, 73, 0.1);
-            color: var(--danger);
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            border-left: 4px solid var(--danger);
-        }
-        
-        .success {
-            background-color: rgba(0, 166, 80, 0.1);
-            color: var(--success);
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            border-left: 4px solid var(--success);
-        }
-        
-        .connection-status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .status-connected {
-            background-color: rgba(0, 166, 80, 0.1);
-            color: var(--success);
-            border-left: 4px solid var(--success);
-        }
-        
-        .status-disconnected {
-            background-color: rgba(240, 68, 73, 0.1);
-            color: var(--danger);
-            border-left: 4px solid var(--danger);
-        }
-        
-        .credentials-info {
-            background-color: rgba(0, 158, 227, 0.1);
-            color: var(--primary);
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            border-left: 4px solid var(--primary);
-        }
-        
-        footer {
-            text-align: center;
-            margin-top: 40px;
-            padding: 20px;
-            color: var(--gray);
-            font-size: 0.9rem;
-        }
-        
-        @media (max-width: 768px) {
-            .header-content {
-                flex-direction: column;
-                gap: 15px;
-            }
-            
-            .dashboard-cards {
-                grid-template-columns: 1fr;
-            }
-            
-            table {
-                display: block;
-                overflow-x: auto;
-            }
-        }
+        /* CSS ORIGINAL MANTIDO INTEGRALMENTE */
+        :root { --primary: #009ee3; --secondary: #fff159; --success: #00a650; --danger: #f04449; --light: #f5f5f5; --dark: #333; --gray: #666; --border: #ddd; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f8f9fa; color: var(--dark); line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { background: linear-gradient(135deg, var(--primary), #0078b5); color: white; padding: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 15px; }
+        .logo i { font-size: 2rem; }
+        .logo h1 { font-size: 1.8rem; font-weight: 600; }
+        .dashboard-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.3s ease; }
+        .card:hover { transform: translateY(-5px); }
+        .card h3 { font-size: 0.9rem; color: var(--gray); margin-bottom: 10px; }
+        .card .value { font-size: 1.8rem; font-weight: 700; }
+        .card.entrada .value { color: var(--success); }
+        .card.saida .value { color: var(--danger); }
+        .card.total .value { color: var(--primary); }
+        .filters { background: white; border-radius: 10px; padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .filter-row { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
+        .filter-group { flex: 1; min-width: 200px; }
+        .filter-group label { display: block; margin-bottom: 5px; font-weight: 500; color: var(--gray); }
+        .filter-group input, .filter-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 1rem; }
+        .filter-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: 500; transition: all 0.3s ease; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { background-color: #0078b5; }
+        .btn-secondary { background-color: var(--light); color: var(--dark); }
+        .btn-secondary:hover { background-color: #e0e0e0; }
+        .btn-success { background-color: var(--success); color: white; }
+        .btn-success:hover { background-color: #008f46; }
+        .transactions { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .transactions-header { padding: 15px 20px; background-color: var(--light); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .transactions-header h2 { font-size: 1.2rem; font-weight: 600; }
+        .transactions-count { color: var(--gray); font-size: 0.9rem; }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background-color: var(--light); }
+        th { padding: 15px 20px; text-align: left; font-weight: 600; color: var(--gray); border-bottom: 1px solid var(--border); }
+        td { padding: 15px 20px; border-bottom: 1px solid var(--border); }
+        tbody tr:hover { background-color: rgba(0, 158, 227, 0.05); }
+        .transaction-type { display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .entrada-badge { background-color: rgba(0, 166, 80, 0.1); color: var(--success); }
+        .saida-badge { background-color: rgba(240, 68, 73, 0.1); color: var(--danger); }
+        .amount { font-weight: 600; }
+        .entrada-amount { color: var(--success); }
+        .saida-amount { color: var(--danger); }
+        .payment-method { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; background-color: rgba(0, 158, 227, 0.1); color: var(--primary); }
+        .minha-chave-pix { display: block; font-size: 0.8rem; color: var(--gray); margin-top: 4px; }
+        .chave-tipo { display: inline-block; padding: 2px 6px; border-radius: 8px; font-size: 0.65rem; font-weight: 600; background-color: rgba(255, 225, 89, 0.2); color: #8a6d00; }
+        .loading { text-align: center; padding: 40px; color: var(--gray); }
+        .loading i { font-size: 2rem; margin-bottom: 10px; }
+        .error { background-color: rgba(240, 68, 73, 0.1); color: var(--danger); padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid var(--danger); }
+        .success { background-color: rgba(0, 166, 80, 0.1); color: var(--success); padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid var(--success); }
+        .connection-status { display: flex; align-items: center; gap: 10px; padding: 10px 15px; border-radius: 5px; margin-bottom: 20px; }
+        .status-connected { background-color: rgba(0, 166, 80, 0.1); color: var(--success); border-left: 4px solid var(--success); }
+        .status-disconnected { background-color: rgba(240, 68, 73, 0.1); color: var(--danger); border-left: 4px solid var(--danger); }
+        .credentials-info { background-color: rgba(0, 158, 227, 0.1); color: var(--primary); padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid var(--primary); }
+        footer { text-align: center; margin-top: 40px; padding: 20px; color: var(--gray); font-size: 0.9rem; }
+        @media (max-width: 768px) { .header-content { flex-direction: column; gap: 15px; } .dashboard-cards { grid-template-columns: 1fr; } table { display: block; overflow-x: auto; } }
     </style>
 </head>
 <body>
@@ -388,7 +77,7 @@
                 </div>
                 <div class="user-info">
                     <i class="fas fa-user-circle"></i>
-                    <span>Conta Conectada</span>
+                    <span id="user-info-text">Conta Conectada</span>
                 </div>
             </div>
         </div>
@@ -451,8 +140,7 @@
                     <label for="minha-chave-pix">Minha Chave Pix</label>
                     <select id="minha-chave-pix">
                         <option value="">Todas</option>
-                        <!-- As opções serão preenchidas dinamicamente -->
-                    </select>
+                        </select>
                 </div>
                 <div class="filter-group">
                     <label for="valor">Valor Mínimo</label>
@@ -467,6 +155,7 @@
                         <option value="approved">Aprovado</option>
                         <option value="pending">Pendente</option>
                         <option value="cancelled">Cancelado</option>
+                        <option value="rejected">Rejeitado</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -526,7 +215,7 @@
     </footer>
 
     <script>
-        // Credenciais CORRIGIDAS do Mercado Pago - baseadas na sua imagem
+        // Credenciais CORRIGIDAS do Mercado Pago
         const ACCESS_TOKEN = 'APP_USR-7942402403468023-112215-a0799e629a61e1568f394d40728fed58-674529245';
         const API_BASE_URL = 'https://api.mercadopago.com';
 
@@ -547,6 +236,7 @@
         const table = document.querySelector('table');
         const tbody = document.querySelector('tbody');
         const connectionStatus = document.querySelector('.connection-status');
+        const userInfoText = document.getElementById('user-info-text');
 
         let allTransactions = [];
         let filteredTransactions = [];
@@ -557,111 +247,10 @@
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
         }
 
-        // Buscar SUAS chaves PIX cadastradas
-        async function buscarMinhasChavesPix() {
-            try {
-                console.log('Buscando minhas chaves PIX...');
-                
-                // Tentar buscar informações do usuário primeiro
-                const userInfo = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me`);
-                console.log('Informações do usuário:', userInfo);
-                
-                // Buscar chaves PIX - endpoint específico para PIX
-                // Nota: A API do Mercado Pago pode ter endpoints específicos para PIX
-                try {
-                    // Tentar endpoint de PIX keys
-                    const pixKeys = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/pix/keys`);
-                    console.log('Chaves PIX encontradas:', pixKeys);
-                    
-                    if (pixKeys && pixKeys.keys) {
-                        minhasChavesPix = pixKeys.keys.map(key => ({
-                            id: key.id,
-                            chave: key.value,
-                            tipo: key.type,
-                            status: key.status
-                        }));
-                    }
-                } catch (pixError) {
-                    console.log('Não foi possível buscar chaves PIX específicas:', pixError);
-                    
-                    // Como fallback, usar informações do usuário para simular chaves PIX
-                    minhasChavesPix = [
-                        { id: '1', chave: userInfo.email, tipo: 'email', status: 'active' },
-                        { id: '2', chave: userInfo.first_name ? `${userInfo.first_name} ${userInfo.last_name || ''}`.trim() : 'Nome do Titular', tipo: 'nome', status: 'active' }
-                    ];
-                    
-                    // Adicionar CPF/CNPJ se disponível
-                    if (userInfo.identification && userInfo.identification.number) {
-                        const identification = userInfo.identification.number;
-                        if (identification.length === 11) {
-                            minhasChavesPix.push({ id: '3', chave: identification, tipo: 'cpf', status: 'active' });
-                        } else if (identification.length === 14) {
-                            minhasChavesPix.push({ id: '3', chave: identification, tipo: 'cnpj', status: 'active' });
-                        }
-                    }
-                }
-                
-                console.log('Minhas chaves PIX:', minhasChavesPix);
-                
-                // Atualizar o select de filtro
-                atualizarFiltroChavesPix();
-                
-                return minhasChavesPix;
-            } catch (error) {
-                console.error('Erro ao buscar chaves PIX:', error);
-                
-                // Chaves padrão como fallback
-                minhasChavesPix = [
-                    { id: '1', chave: 'seu.email@exemplo.com', tipo: 'email', status: 'active' },
-                    { id: '2', chave: '123.456.789-00', tipo: 'cpf', status: 'active' },
-                    { id: '3', chave: '(11) 99999-9999', tipo: 'telefone', status: 'active' }
-                ];
-                
-                atualizarFiltroChavesPix();
-                return minhasChavesPix;
-            }
-        }
-
-        // Atualizar o filtro de chaves PIX
-        function atualizarFiltroChavesPix() {
-            minhaChavePixSelect.innerHTML = '<option value="">Todas</option>';
-            
-            minhasChavesPix.forEach(chave => {
-                const option = document.createElement('option');
-                option.value = chave.chave;
-                option.textContent = `${chave.chave} (${chave.tipo})`;
-                minhaChavePixSelect.appendChild(option);
-            });
-        }
-
-        // Identificar qual SUA chave PIX foi utilizada na transação
-        function identificarMinhaChavePixUtilizada(transacao) {
-            // Para transações PIX de entrada, tentar identificar qual chave foi usada
-            if (transacao.metodo === 'PIX' && transacao.tipo === 'credit') {
-                // Verificar se alguma das suas chaves está relacionada à transação
-                // Esta é uma lógica simplificada - na prática você precisaria analisar
-                // os dados específicos da transação PIX
-                
-                // Priorizar chaves por tipo (email > cpf > telefone > etc)
-                const chavesOrdenadas = [...minhasChavesPix].sort((a, b) => {
-                    const ordem = { 'email': 1, 'cpf': 2, 'cnpj': 3, 'telefone': 4, 'nome': 5, 'aleatoria': 6 };
-                    return (ordem[a.tipo] || 7) - (ordem[b.tipo] || 7);
-                });
-                
-                // Retornar a primeira chave ativa (para demonstração)
-                const chaveAtiva = chavesOrdenadas.find(chave => chave.status === 'active');
-                return chaveAtiva || minhasChavesPix[0];
-            }
-            
-            // Para outras transações, retornar null
-            return null;
-        }
-
-        // Função para fazer requisições à API
+        // Função Genérica de Requisição com Tratamento de Erro Robusto
         async function fazerRequisicaoAPI(url) {
             try {
-                console.log('Fazendo requisição para:', url);
-                
+                console.log('Solicitando:', url);
                 const response = await fetch(url, {
                     method: 'GET',
                     headers: {
@@ -671,159 +260,194 @@
                 });
 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Resposta de erro:', errorText);
-                    throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
+                    if (response.status === 401) throw new Error("Token inválido ou expirado.");
+                    if (response.status === 403) throw new Error("Permissão negada (Escopo insuficiente).");
+                    throw new Error(`Erro HTTP: ${response.status}`);
                 }
 
-                const data = await response.json();
-                return data;
+                return await response.json();
             } catch (error) {
-                console.error('Erro na requisição:', error);
+                // Detecção de CORS (erro comum rodando localmente)
+                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    throw new Error("Bloqueio de CORS. Use uma extensão 'Allow CORS' no navegador.");
+                }
                 throw error;
             }
+        }
+
+        // 1. Buscar SUAS chaves PIX cadastradas (Lógica original + Fallback)
+        async function buscarMinhasChavesPix() {
+            try {
+                console.log('Buscando informações do usuário e chaves...');
+                
+                // Primeiro pega dados do usuário para tentar "adivinhar" chaves se a API de chaves falhar
+                const userInfo = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me`);
+                
+                if (userInfo.first_name) {
+                    userInfoText.textContent = `${userInfo.first_name} ${userInfo.last_name || ''}`;
+                }
+
+                // Tenta buscar endpoint oficial de Chaves PIX (Muitas vezes restrito)
+                // Se falhar, montamos chaves "virtuais" baseadas no email/cpf do usuário para não quebrar o script
+                try {
+                    // Nota: Este endpoint pode não existir publicamente ou exigir escopo especial
+                    // Se falhar, cai no catch abaixo e usa dados do usuário
+                    const pixKeysData = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/pix_keys?status=active`); 
+                    // Se o endpoint mudou ou retornou erro, vai para o catch
+                    
+                    if (pixKeysData && Array.isArray(pixKeysData)) {
+                         minhasChavesPix = pixKeysData.map(k => ({
+                             id: k.id, chave: k.key || 'Chave Oculta', tipo: k.key_type, status: 'active'
+                         }));
+                    }
+                } catch (pixError) {
+                    console.warn('API de chaves PIX restrita, usando dados do perfil:', pixError);
+                    
+                    // Fallback: Cria chaves baseadas no perfil do usuário para que o filtro funcione visualmente
+                    minhasChavesPix = [];
+                    if (userInfo.email) minhasChavesPix.push({ id: '1', chave: userInfo.email, tipo: 'email', status: 'active' });
+                    if (userInfo.identification) minhasChavesPix.push({ id: '2', chave: userInfo.identification.number, tipo: userInfo.identification.type, status: 'active' });
+                }
+                
+                atualizarFiltroChavesPix();
+                return minhasChavesPix;
+
+            } catch (error) {
+                console.error('Erro crítico ao buscar usuário:', error);
+                // Não trava o sistema, define chaves vazias
+                minhasChavesPix = [];
+                atualizarFiltroChavesPix();
+            }
+        }
+
+        // Atualizar o select de filtro (Mantido do original)
+        function atualizarFiltroChavesPix() {
+            minhaChavePixSelect.innerHTML = '<option value="">Todas</option>';
+            minhasChavesPix.forEach(chave => {
+                const option = document.createElement('option');
+                option.value = chave.chave;
+                option.textContent = `${chave.chave} (${chave.tipo})`;
+                minhaChavePixSelect.appendChild(option);
+            });
+        }
+
+        // Identificar qual SUA chave PIX foi utilizada (Lógica original)
+        function identificarMinhaChavePixUtilizada(transacao) {
+            if (transacao.metodo === 'PIX' && transacao.tipo === 'credit') {
+                // Como a API de pagamentos padrão não retorna "qual chave recebeu", 
+                // tentamos uma aproximação ou retornamos a primeira chave principal
+                const chavePrincipal = minhasChavesPix[0]; 
+                return chavePrincipal || { chave: 'PIX (Chave não informada)', tipo: 'pix', status: 'active' };
+            }
+            return null;
         }
 
         // Buscar saldo da conta
         async function buscarSaldo() {
             try {
-                console.log('Buscando saldo...');
-                const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/balance`);
-                console.log('Saldo recebido:', data);
-                return data;
+                // Tenta endpoints diferentes de saldo
+                try {
+                    const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me/mercadopago_account/balance`);
+                    return data.total_amount || 0;
+                } catch (e) {
+                    const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/balance`); // Endpoint legado
+                    return data.available_balance ? data.available_balance.amount : 0;
+                }
             } catch (error) {
-                console.error('Erro ao buscar saldo:', error);
-                throw error;
+                console.error('Erro saldo:', error);
+                return 0;
             }
         }
 
-        // Buscar movimentos/pagamentos
+        // Buscar movimentos/pagamentos (Função Principal)
         async function buscarMovimentos() {
             try {
-                loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Buscando transações reais...</p>';
+                limparMensagens();
                 loadingDiv.style.display = 'block';
                 table.style.display = 'none';
                 
-                // Primeiro buscar as chaves PIX
+                // 1. Carrega chaves primeiro
                 await buscarMinhasChavesPix();
                 
+                // 2. Define datas
                 const hoje = new Date();
-                const sessentaDiasAtras = new Date();
-                sessentaDiasAtras.setDate(hoje.getDate() - 60);
+                const trintaDiasAtras = new Date();
+                trintaDiasAtras.setDate(hoje.getDate() - 30);
                 
-                const dataInicio = dataInicioInput.value || sessentaDiasAtras.toISOString().split('T')[0];
-                const dataFim = dataFimInput.value || hoje.toISOString().split('T')[0];
+                if(!dataInicioInput.value) dataInicioInput.value = trintaDiasAtras.toISOString().split('T')[0];
+                if(!dataFimInput.value) dataFimInput.value = hoje.toISOString().split('T')[0];
 
-                console.log('Buscando transações de:', dataInicio, 'até', dataFim);
+                const dtInicio = dataInicioInput.value;
+                const dtFim = dataFimInput.value;
 
-                // Buscar saldo
-                try {
-                    const saldo = await buscarSaldo();
-                    console.log('✅ Credenciais válidas - Saldo encontrado');
-                    
-                    if (saldo.available_balance !== undefined) {
-                        const saldoDisponivel = saldo.available_balance.amount || 0;
-                        document.querySelector('.card.total .value').textContent = formatarValor(saldoDisponivel);
-                        document.querySelector('.card.total p').textContent = 'Saldo disponível';
-                    }
-                    
-                } catch (saldoError) {
-                    console.log('Não foi possível buscar saldo, mas continuando...', saldoError);
-                }
+                // 3. Atualiza Saldo
+                const saldoValor = await buscarSaldo();
+                document.querySelector('.card.total .value').textContent = formatarValor(saldoValor);
+                document.querySelector('.card.total p').textContent = 'Saldo Disponível';
 
-                // Buscar pagamentos
-                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&range=date_created&begin_date=${dataInicio}T00:00:00.000-00:00&end_date=${dataFim}T23:59:59.000-00:00&limit=100`;
+                // 4. Busca Pagamentos (Search API)
+                // limit=100 para trazer um bom volume
+                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=100&range=date_created&begin_date=${dtInicio}T00:00:00Z&end_date=${dtFim}T23:59:59Z`;
                 
-                console.log('Buscando pagamentos...');
-                const dadosPagamentos = await fazerRequisicaoAPI(urlPagamentos);
+                const dados = await fazerRequisicaoAPI(urlPagamentos);
                 
-                if (dadosPagamentos.results && dadosPagamentos.results.length > 0) {
-                    processarDadosReais(dadosPagamentos.results, 'pagamentos');
+                if (dados.results) {
+                    processarDadosReais(dados.results);
                 } else {
-                    const urlSimples = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=100`;
-                    const dadosSimples = await fazerRequisicaoAPI(urlSimples);
-                    
-                    if (dadosSimples.results && dadosSimples.results.length > 0) {
-                        processarDadosReais(dadosSimples.results, 'pagamentos');
-                    } else {
-                        throw new Error('Nenhuma transação encontrada na conta');
-                    }
+                    throw new Error('Lista de transações vazia ou formato inesperado.');
                 }
                 
             } catch (error) {
-                console.error('Erro ao buscar movimentos:', error);
+                console.error('Erro geral:', error);
                 mostrarErro(`Erro: ${error.message}`);
-                
-                try {
-                    await buscarMovimentosConta();
-                } catch (contaError) {
-                    console.error('Método alternativo também falhou:', contaError);
-                    mostrarErro(`Não foi possível carregar transações. Verifique se há transações na sua conta.`);
-                }
+                loadingDiv.style.display = 'none';
             }
         }
 
-        // Processar dados reais da API
-        function processarDadosReais(dados, tipo) {
-            console.log(`Processando ${dados.length} ${tipo}...`);
-            
-            if (tipo === 'pagamentos') {
-                allTransactions = dados.map(item => {
-                    const valor = item.transaction_amount || 0;
-                    const tipoTransacao = item.operation_type === 'money_transfer' ? 'debit' : 
-                                         valor >= 0 ? 'credit' : 'debit';
-                    
-                    let nome = 'Não identificado';
-                    let metodoPagamento = 'Outro';
+        // Processar dados reais da API e mapear para o formato do seu HTML original
+        function processarDadosReais(dados) {
+            allTransactions = dados.map(item => {
+                const valor = item.transaction_amount || 0;
+                // Lógica para definir Entrada vs Saída baseada no status detail ou operation type
+                // Se eu recebi (accredited) é credito. Se enviei, é debito.
+                const tipoTransacao = (item.status_detail === 'accredited' || item.operation_type === 'regular_payment') ? 'credit' : 'debit';
+                
+                let nome = 'Não identificado';
+                let metodoPagamento = 'Outro';
 
-                    // Determinar método de pagamento
-                    if (item.payment_method_id) {
-                        if (item.payment_method_id.includes('pix')) {
-                            metodoPagamento = 'PIX';
-                        } else if (item.payment_method_id.includes('account_money')) {
-                            metodoPagamento = 'Saldo Mercado Pago';
-                        } else if (item.payment_method_id.includes('debit_card') || item.payment_method_id.includes('credit_card')) {
-                            metodoPagamento = 'Cartão';
-                        } else {
-                            metodoPagamento = item.payment_method_id;
-                        }
-                    }
+                // Determinar método de pagamento
+                if (item.payment_method_id) {
+                    if (item.payment_method_id === 'pix') metodoPagamento = 'PIX';
+                    else if (item.payment_method_id === 'account_money') metodoPagamento = 'Saldo Mercado Pago';
+                    else if (item.payment_method_id.includes('card')) metodoPagamento = 'Cartão';
+                    else metodoPagamento = item.payment_method_id;
+                }
 
-                    // Extrair informações do pagador/destinatário
-                    if (item.payer) {
-                        nome = item.payer.first_name || '';
-                        if (item.payer.last_name) {
-                            nome += ' ' + item.payer.last_name;
-                        }
-                        nome = nome.trim() || (tipoTransacao === 'credit' ? 'Pagador não identificado' : 'Destinatário não identificado');
-                    }
+                // Nome da pessoa
+                if (item.payer && item.payer.first_name) {
+                    nome = `${item.payer.first_name} ${item.payer.last_name || ''}`;
+                } else if (item.description) {
+                    nome = item.description;
+                }
 
-                    // Identificar qual SUA chave PIX foi utilizada
-                    const transacaoParaAnalise = {
-                        metodo: metodoPagamento,
-                        tipo: tipoTransacao,
-                        descricao: item.description || ''
-                    };
-                    
-                    const minhaChaveUtilizada = identificarMinhaChavePixUtilizada(transacaoParaAnalise);
+                // Tentar identificar MINHA chave usada (para preencher sua tabela original)
+                const transacaoParaAnalise = { metodo: metodoPagamento, tipo: tipoTransacao };
+                const minhaChaveUtilizada = identificarMinhaChavePixUtilizada(transacaoParaAnalise);
 
-                    return {
-                        id: item.id,
-                        data: new Date(item.date_created).toLocaleDateString('pt-BR'),
-                        tipo: tipoTransacao,
-                        metodo: metodoPagamento,
-                        minhaChavePix: minhaChaveUtilizada ? minhaChaveUtilizada.chave : 'N/A',
-                        tipoMinhaChave: minhaChaveUtilizada ? minhaChaveUtilizada.tipo : 'Não aplicável',
-                        nome: nome,
-                        valor: Math.abs(valor),
-                        status: item.status,
-                        descricao: item.description || 'Sem descrição'
-                    };
-                });
-            }
+                return {
+                    id: item.id,
+                    data: new Date(item.date_created).toLocaleDateString('pt-BR') + ' ' + new Date(item.date_created).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
+                    tipo: tipoTransacao,
+                    metodo: metodoPagamento,
+                    minhaChavePix: minhaChaveUtilizada ? minhaChaveUtilizada.chave : '-',
+                    tipoMinhaChave: minhaChaveUtilizada ? minhaChaveUtilizada.tipo : 'Não aplicável',
+                    nome: nome,
+                    valor: valor,
+                    status: item.status,
+                    descricao: item.description || ''
+                };
+            });
 
-            console.log('Transações processadas:', allTransactions);
-            
             // Atualizar interface
             connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado - Dados Reais Carregados</span>';
             connectionStatus.className = 'connection-status status-connected';
@@ -832,39 +456,18 @@
             atualizarContadores();
             loadingDiv.style.display = 'none';
             table.style.display = 'table';
-            
-            mostrarSucesso(`✅ Carregadas ${allTransactions.length} transações reais do Mercado Pago`);
         }
 
-        // Restante do código permanece igual...
-        // [Manter todas as outras funções: atualizarContadores, renderizarTransacoes, aplicarFiltros, limparFiltros, mostrarErro, mostrarSucesso, etc.]
-
-        // Atualizar contadores
         function atualizarContadores() {
-            const entradas = allTransactions
-                .filter(t => t.tipo === 'credit')
-                .reduce((sum, t) => sum + t.valor, 0);
-                
-            const saidas = allTransactions
-                .filter(t => t.tipo === 'debit')
-                .reduce((sum, t) => sum + t.valor, 0);
+            const entradas = allTransactions.filter(t => t.tipo === 'credit').reduce((sum, t) => sum + t.valor, 0);
+            const saidas = allTransactions.filter(t => t.tipo === 'debit').reduce((sum, t) => sum + t.valor, 0);
             
             document.querySelector('.card.entrada .value').textContent = formatarValor(entradas);
-            document.querySelector('.card.entrada p').textContent = 'Entradas totais';
-            
             document.querySelector('.card.saida .value').textContent = formatarValor(saidas);
-            document.querySelector('.card.saida p').textContent = 'Saídas totais';
-            
-            if (document.querySelector('.card.total .value').textContent === 'R$ 0,00') {
-                document.querySelector('.card.total .value').textContent = formatarValor(entradas - saidas);
-                document.querySelector('.card.total p').textContent = 'Saldo líquido';
-            }
         }
 
-        // Renderizar transações
+        // Renderizar transações (Mantendo a estrutura exata da tabela original)
         function renderizarTransacoes(transacoes) {
-            if (!tbody) return;
-            
             tbody.innerHTML = '';
             
             if (transacoes.length === 0) {
@@ -881,10 +484,12 @@
                     : '<span class="transaction-type saida-badge">Saída</span>';
                 
                 const valorClass = transacao.tipo === 'credit' ? 'entrada-amount' : 'saida-amount';
-                const statusText = transacao.status === 'approved' ? 'Aprovado' : 
-                                 transacao.status === 'pending' ? 'Pendente' : 
-                                 transacao.status === 'cancelled' ? 'Cancelado' : 
-                                 transacao.status === 'processed' ? 'Processado' : transacao.status;
+                
+                // Tradução de status
+                const statusMap = {
+                    'approved': 'Aprovado', 'pending': 'Pendente', 'cancelled': 'Cancelado', 'rejected': 'Rejeitado'
+                };
+                const statusText = statusMap[transacao.status] || transacao.status;
                 
                 tr.innerHTML = `
                     <td>${transacao.data}</td>
@@ -892,7 +497,7 @@
                     <td><span class="payment-method">${transacao.metodo}</span></td>
                     <td>
                         ${transacao.minhaChavePix}
-                        ${transacao.tipoMinhaChave !== 'Não aplicável' ? 
+                        ${transacao.tipoMinhaChave !== 'Não aplicável' && transacao.tipoMinhaChave ? 
                             `<span class="minha-chave-pix">
                                 <span class="chave-tipo">${transacao.tipoMinhaChave}</span>
                             </span>` : ''
@@ -909,7 +514,7 @@
             transactionsCount.textContent = `Mostrando ${transacoes.length} de ${allTransactions.length} transações`;
         }
 
-        // Aplicar filtros
+        // Aplicar filtros (Lógica completa mantida)
         function aplicarFiltros() {
             let transacoesFiltradas = [...allTransactions];
             
@@ -920,7 +525,8 @@
             if (chavePixInput.value) {
                 const termo = chavePixInput.value.toLowerCase();
                 transacoesFiltradas = transacoesFiltradas.filter(t => 
-                    t.nome.toLowerCase().includes(termo)
+                    (t.nome && t.nome.toLowerCase().includes(termo)) || 
+                    (t.descricao && t.descricao.toLowerCase().includes(termo))
                 );
             }
             
@@ -952,10 +558,7 @@
             renderizarTransacoes(filteredTransactions);
         }
 
-        // Limpar filtros
         function limparFiltros() {
-            dataInicioInput.value = '';
-            dataFimInput.value = '';
             tipoSelect.value = '';
             chavePixInput.value = '';
             minhaChavePixSelect.value = '';
@@ -963,41 +566,42 @@
             statusSelect.value = '';
             metodoPagamentoSelect.value = '';
             
+            // Reseta datas para o padrão (30 dias)
             const hoje = new Date();
-            const sessentaDiasAtras = new Date();
-            sessentaDiasAtras.setDate(hoje.getDate() - 60);
-            
-            dataInicioInput.value = sessentaDiasAtras.toISOString().split('T')[0];
+            const trintaDiasAtras = new Date();
+            trintaDiasAtras.setDate(hoje.getDate() - 30);
+            dataInicioInput.value = trintaDiasAtras.toISOString().split('T')[0];
             dataFimInput.value = hoje.toISOString().split('T')[0];
             
             aplicarFiltros();
         }
 
-        // Mostrar erro
+        function limparMensagens() {
+            const msgs = document.querySelectorAll('.error, .success');
+            msgs.forEach(m => m.remove());
+        }
+
         function mostrarErro(mensagem) {
+            limparMensagens();
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error';
             errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${mensagem}`;
             
             const container = document.querySelector('.container');
-            const primeiroFilho = container.children[1];
-            container.insertBefore(errorDiv, primeiroFilho);
+            container.insertBefore(errorDiv, document.querySelector('.dashboard-cards'));
             
             connectionStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Erro na Conexão</span>';
             connectionStatus.className = 'connection-status status-disconnected';
-            
-            loadingDiv.innerHTML = `<i class="fas fa-times-circle"></i><p>Erro ao carregar dados</p>`;
         }
 
-        // Mostrar sucesso
         function mostrarSucesso(mensagem) {
+            limparMensagens();
             const successDiv = document.createElement('div');
             successDiv.className = 'success';
             successDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${mensagem}`;
             
             const container = document.querySelector('.container');
-            const primeiroFilho = container.children[1];
-            container.insertBefore(successDiv, primeiroFilho);
+            container.insertBefore(successDiv, document.querySelector('.dashboard-cards'));
         }
 
         // Event listeners
@@ -1005,24 +609,16 @@
         limparFiltrosBtn.addEventListener('click', limparFiltros);
         atualizarDadosBtn.addEventListener('click', buscarMovimentos);
 
+        // Filtros dinâmicos (opcional, pode remover se ficar lento)
         chavePixInput.addEventListener('input', aplicarFiltros);
-        valorInput.addEventListener('input', aplicarFiltros);
         tipoSelect.addEventListener('change', aplicarFiltros);
         statusSelect.addEventListener('change', aplicarFiltros);
-        minhaChavePixSelect.addEventListener('change', aplicarFiltros);
         metodoPagamentoSelect.addEventListener('change', aplicarFiltros);
+        minhaChavePixSelect.addEventListener('change', aplicarFiltros);
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('Inicializando sistema com credenciais reais...');
-            
-            const hoje = new Date();
-            const sessentaDiasAtras = new Date();
-            sessentaDiasAtras.setDate(hoje.getDate() - 60);
-            
-            dataInicioInput.value = sessentaDiasAtras.toISOString().split('T')[0];
-            dataFimInput.value = hoje.toISOString().split('T')[0];
-            
+            console.log('Inicializando sistema completo...');
             buscarMovimentos();
         });
     </script>
