@@ -115,6 +115,24 @@
             color: var(--primary);
             word-break: break-all;
         }
+        
+        /* NOVO ESTILO PARA MINHA CHAVE PIX UTILIZADA */
+        .minha-chave-utilizada {
+            font-size: 0.8rem;
+            color: var(--success);
+            word-break: break-all;
+        }
+        
+        .tipo-chave-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            background-color: rgba(255, 225, 89, 0.2);
+            color: #8a6d00;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -257,7 +275,8 @@
                         <th>ID Transação</th>
                         <th>Código Operação</th>
                         <th>Chave Segurança</th>
-                        <th>Chave Pix</th>
+                        <th>Chave Pix Remetente</th>
+                        <th>Minha Chave Pix Utilizada</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -403,6 +422,32 @@
             });
         }
 
+        // NOVA FUNÇÃO: Identificar qual chave Pix foi utilizada na transação
+        function identificarMinhaChavePixUtilizada(transacao) {
+            // Para transações de entrada (crédito) via PIX, tentamos identificar qual chave foi usada
+            if (transacao.tipo === 'credit' && transacao.metodoPagamento === 'PIX') {
+                // Se temos chaves cadastradas, tentamos encontrar uma correspondência
+                if (minhasChavesPix.length > 0) {
+                    // Prioridade 1: Verificar se alguma das minhas chaves aparece nos dados da transação
+                    for (const minhaChave of minhasChavesPix) {
+                        // Verificar se a chave aparece na descrição ou em dados da transação
+                        if (transacao.descricao && transacao.descricao.includes(minhaChave.chave)) {
+                            return minhaChave;
+                        }
+                    }
+                    
+                    // Prioridade 2: Se não encontrou, usar a chave principal (primeira da lista)
+                    return minhasChavesPix[0];
+                }
+                
+                // Se não temos chaves cadastradas, retornar uma chave padrão
+                return { chave: 'Chave não identificada', tipo: 'pix', status: 'active' };
+            }
+            
+            // Para outras transações, retornar null
+            return null;
+        }
+
         // Buscar saldo da conta
         async function buscarSaldo() {
             try {
@@ -500,6 +545,26 @@
                 } else if (item.payment_method_id === 'pix') {
                     chavePix = 'financeiro@verboestacao.com'; // Exemplo da imagem
                 }
+                
+                // Determinar método de pagamento
+                let metodoPagamento = 'Outro';
+                if (item.payment_method_id) {
+                    if (item.payment_method_id === 'pix') metodoPagamento = 'PIX';
+                    else if (item.payment_method_id === 'account_money') metodoPagamento = 'Saldo Mercado Pago';
+                    else if (item.payment_method_id.includes('card')) metodoPagamento = 'Cartão';
+                    else metodoPagamento = item.payment_method_id;
+                }
+                
+                // Determinar tipo (entrada/saída)
+                const tipo = (item.status_detail === 'accredited' || item.operation_type === 'regular_payment') ? 'credit' : 'debit';
+                
+                // NOVO: Identificar qual chave Pix minha foi utilizada
+                const transacaoParaAnalise = { 
+                    tipo: tipo, 
+                    metodoPagamento: metodoPagamento,
+                    descricao: descricao
+                };
+                const minhaChaveUtilizada = identificarMinhaChavePixUtilizada(transacaoParaAnalise);
 
                 return {
                     id: item.id,
@@ -511,8 +576,10 @@
                     codigoOperacao: codigoOperacao,
                     chaveSeguranca: chaveSeguranca,
                     chavePix: chavePix,
-                    tipo: (item.status_detail === 'accredited' || item.operation_type === 'regular_payment') ? 'credit' : 'debit',
-                    status: item.status
+                    tipo: tipo,
+                    status: item.status,
+                    metodoPagamento: metodoPagamento,
+                    minhaChaveUtilizada: minhaChaveUtilizada
                 };
             });
 
@@ -569,7 +636,7 @@
             tbody.innerHTML = '';
             
             if (transacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">Nenhuma transação encontrada com os filtros aplicados</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">Nenhuma transação encontrada com os filtros aplicados</td></tr>';
                 transactionsCount.textContent = 'Mostrando 0 de 0 transações';
                 return;
             }
@@ -584,6 +651,15 @@
                 else if (transacao.situacao === 'Rejeitado') situacaoClass = 'saida-badge';
                 else situacaoClass = 'entrada-badge';
                 
+                // Formatar informação da minha chave Pix utilizada
+                let minhaChaveHtml = '-';
+                if (transacao.minhaChaveUtilizada) {
+                    minhaChaveHtml = `
+                        <span class="minha-chave-utilizada">${transacao.minhaChaveUtilizada.chave}</span>
+                        <span class="tipo-chave-badge">${transacao.minhaChaveUtilizada.tipo}</span>
+                    `;
+                }
+                
                 tr.innerHTML = `
                     <td><span class="${situacaoClass}">${transacao.situacao}</span></td>
                     <td class="amount ${transacao.tipo === 'credit' ? 'entrada-amount' : 'saida-amount'}">${formatarValor(transacao.valor)}</td>
@@ -593,6 +669,7 @@
                     <td><span class="codigo-operacao">${transacao.codigoOperacao}</span></td>
                     <td><span class="chave-seguranca">${transacao.chaveSeguranca}</span></td>
                     <td><span class="chave-pix">${transacao.chavePix}</span></td>
+                    <td>${minhaChaveHtml}</td>
                 `;
                 
                 tbody.appendChild(tr);
@@ -613,13 +690,14 @@
                 const termo = chavePixInput.value.toLowerCase();
                 transacoesFiltradas = transacoesFiltradas.filter(t => 
                     (t.descricao && t.descricao.toLowerCase().includes(termo)) ||
-                    (t.chavePix && t.chavePix.toLowerCase().includes(termo))
+                    (t.chavePix && t.chavePix.toLowerCase().includes(termo)) ||
+                    (t.minhaChaveUtilizada && t.minhaChaveUtilizada.chave.toLowerCase().includes(termo))
                 );
             }
             
             if (minhaChavePixSelect.value) {
                 transacoesFiltradas = transacoesFiltradas.filter(t => 
-                    t.chavePix === minhaChavePixSelect.value
+                    t.minhaChaveUtilizada && t.minhaChaveUtilizada.chave === minhaChavePixSelect.value
                 );
             }
             
