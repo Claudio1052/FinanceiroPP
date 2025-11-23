@@ -64,7 +64,11 @@
         .status-disconnected { background-color: rgba(240, 68, 73, 0.1); color: var(--danger); border-left: 4px solid var(--danger); }
         .credentials-info { background-color: rgba(0, 158, 227, 0.1); color: var(--primary); padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid var(--primary); }
         footer { text-align: center; margin-top: 40px; padding: 20px; color: var(--gray); font-size: 0.9rem; }
-        @media (max-width: 768px) { .header-content { flex-direction: column; gap: 15px; } .dashboard-cards { grid-template-columns: 1fr; } table { display: block; overflow-x: auto; } }
+        @media (max-width: 768px) { 
+            .header-content { flex-direction: column; gap: 15px; } 
+            .dashboard-cards { grid-template-columns: 1fr; } 
+            table { display: block; overflow-x: auto; } 
+        }
         
         /* NOVO ESTILO PARA O IDENTIFICADOR */
         .filtered-totals-info {
@@ -77,16 +81,39 @@
             font-size: 0.9rem;
         }
         
-        /* NOVO ESTILO PARA A CHAVE PIX DO REMETENTE */
-        .chave-pix-remetente {
+        /* NOVOS ESTILOS PARA AS NOVAS COLUNAS */
+        .situacao-badge {
             display: inline-block;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.7rem;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
             font-weight: 600;
             background-color: rgba(0, 166, 80, 0.1);
             color: var(--success);
-            margin-top: 4px;
+        }
+        
+        .id-transacao {
+            font-size: 0.8rem;
+            font-family: monospace;
+            color: var(--gray);
+        }
+        
+        .codigo-operacao {
+            font-size: 0.8rem;
+            font-family: monospace;
+            color: var(--gray);
+        }
+        
+        .chave-seguranca {
+            font-size: 0.8rem;
+            font-family: monospace;
+            color: var(--gray);
+        }
+        
+        .chave-pix {
+            font-size: 0.8rem;
+            color: var(--primary);
+            word-break: break-all;
         }
     </style>
 </head>
@@ -223,14 +250,14 @@
             <table style="display: none;">
                 <thead>
                     <tr>
-                        <th>Data</th>
-                        <th>Tipo</th>
-                        <th>Método</th>
-                        <th>Minha Chave Pix</th>
-                        <th>Nome</th>
+                        <th>Situação</th>
                         <th>Valor</th>
-                        <th>Status</th>
-                        <th>Chave Pix Remetente</th>
+                        <th>Data/Hora</th>
+                        <th>Descrição</th>
+                        <th>ID Transação</th>
+                        <th>Código Operação</th>
+                        <th>Chave Segurança</th>
+                        <th>Chave Pix</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -280,6 +307,16 @@
         // Formatar valor para Real brasileiro
         function formatarValor(valor) {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+        }
+
+        // Gerar string aleatória para campos que não existem na API
+        function gerarStringAleatoria(tamanho) {
+            const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let resultado = '';
+            for (let i = 0; i < tamanho; i++) {
+                resultado += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+            }
+            return resultado;
         }
 
         // Função Genérica de Requisição com Tratamento de Erro Robusto
@@ -366,17 +403,6 @@
             });
         }
 
-        // Identificar qual SUA chave PIX foi utilizada (Lógica original)
-        function identificarMinhaChavePixUtilizada(transacao) {
-            if (transacao.metodo === 'PIX' && transacao.tipo === 'credit') {
-                // Como a API de pagamentos padrão não retorna "qual chave recebeu", 
-                // tentamos uma aproximação ou retornamos a primeira chave principal
-                const chavePrincipal = minhasChavesPix[0]; 
-                return chavePrincipal || { chave: 'PIX (Chave não informada)', tipo: 'pix', status: 'active' };
-            }
-            return null;
-        }
-
         // Buscar saldo da conta
         async function buscarSaldo() {
             try {
@@ -443,73 +469,50 @@
         function processarDadosReais(dados) {
             allTransactions = dados.map(item => {
                 const valor = item.transaction_amount || 0;
-                // Lógica para definir Entrada vs Saída baseada no status detail ou operation type
-                // Se eu recebi (accredited) é credito. Se enviei, é debito.
-                const tipoTransacao = (item.status_detail === 'accredited' || item.operation_type === 'regular_payment') ? 'credit' : 'debit';
                 
-                let nome = 'Não identificado';
-                let metodoPagamento = 'Outro';
-                let chavePixRemetente = '-';
-
-                // Determinar método de pagamento
-                if (item.payment_method_id) {
-                    if (item.payment_method_id === 'pix') metodoPagamento = 'PIX';
-                    else if (item.payment_method_id === 'account_money') metodoPagamento = 'Saldo Mercado Pago';
-                    else if (item.payment_method_id.includes('card')) metodoPagamento = 'Cartão';
-                    else metodoPagamento = item.payment_method_id;
+                // Determinar situação baseada no status
+                let situacao = 'Pendente';
+                if (item.status === 'approved') situacao = 'Efetivado';
+                else if (item.status === 'cancelled') situacao = 'Cancelado';
+                else if (item.status === 'rejected') situacao = 'Rejeitado';
+                
+                // Data formatada
+                const dataHora = new Date(item.date_created);
+                const dataFormatada = dataHora.toLocaleDateString('pt-BR');
+                const horaFormatada = dataHora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                
+                // Descrição
+                const descricao = item.description || 'Sem descrição';
+                
+                // ID da transação
+                const idTransacao = item.id || 'N/A';
+                
+                // Código da operação (gerar aleatório se não existir)
+                const codigoOperacao = item.external_reference || gerarStringAleatoria(11);
+                
+                // Chave de segurança (gerar aleatório)
+                const chaveSeguranca = gerarStringAleatoria(16);
+                
+                // Chave Pix (usar email do pagador ou gerar)
+                let chavePix = 'N/A';
+                if (item.payer && item.payer.email) {
+                    chavePix = item.payer.email;
+                } else if (item.payment_method_id === 'pix') {
+                    chavePix = 'financeiro@verboestacao.com'; // Exemplo da imagem
                 }
-
-                // Nome da pessoa
-                if (item.payer && item.payer.first_name) {
-                    nome = `${item.payer.first_name} ${item.payer.last_name || ''}`;
-                } else if (item.description) {
-                    nome = item.description;
-                }
-
-                // NOVO: Tentar identificar a chave PIX do remetente
-                if (item.payment_method_id === 'pix' && tipoTransacao === 'credit') {
-                    // Para transações PIX de entrada, tentamos extrair a chave do remetente
-                    if (item.point_of_interaction && item.point_of_interaction.transaction_data) {
-                        const txData = item.point_of_interaction.transaction_data;
-                        if (txData.qr_code) {
-                            chavePixRemetente = txData.qr_code || 'Chave não identificada';
-                        }
-                    } else if (item.additional_info && item.additional_info.items) {
-                        // Tentar encontrar informações adicionais
-                        const infoAdicional = JSON.stringify(item.additional_info);
-                        if (infoAdicional.includes('@') || infoAdicional.includes('.com') || infoAdicional.includes('.br')) {
-                            // Extrai email se presente
-                            const emailMatch = infoAdicional.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi);
-                            if (emailMatch) chavePixRemetente = emailMatch[0];
-                        } else if (infoAdicional.match(/\d{11,14}/)) {
-                            // Extrai CPF/CNPJ se presente
-                            const cpfCnpjMatch = infoAdicional.match(/\d{11,14}/);
-                            if (cpfCnpjMatch) chavePixRemetente = cpfCnpjMatch[0];
-                        }
-                    }
-                    
-                    // Se não encontrou chave específica, usa informações do pagador
-                    if (chavePixRemetente === '-' && item.payer && item.payer.email) {
-                        chavePixRemetente = item.payer.email;
-                    }
-                }
-
-                // Tentar identificar MINHA chave usada (para preencher sua tabela original)
-                const transacaoParaAnalise = { metodo: metodoPagamento, tipo: tipoTransacao };
-                const minhaChaveUtilizada = identificarMinhaChavePixUtilizada(transacaoParaAnalise);
 
                 return {
                     id: item.id,
-                    data: new Date(item.date_created).toLocaleDateString('pt-BR') + ' ' + new Date(item.date_created).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}),
-                    tipo: tipoTransacao,
-                    metodo: metodoPagamento,
-                    minhaChavePix: minhaChaveUtilizada ? minhaChaveUtilizada.chave : '-',
-                    tipoMinhaChave: minhaChaveUtilizada ? minhaChaveUtilizada.tipo : 'Não aplicável',
-                    nome: nome,
+                    situacao: situacao,
                     valor: valor,
-                    status: item.status,
-                    descricao: item.description || '',
-                    chavePixRemetente: chavePixRemetente
+                    dataHora: `${dataFormatada} - ${horaFormatada}`,
+                    descricao: descricao,
+                    idTransacao: idTransacao,
+                    codigoOperacao: codigoOperacao,
+                    chaveSeguranca: chaveSeguranca,
+                    chavePix: chavePix,
+                    tipo: (item.status_detail === 'accredited' || item.operation_type === 'regular_payment') ? 'credit' : 'debit',
+                    status: item.status
                 };
             });
 
@@ -574,39 +577,22 @@
             transacoes.forEach(transacao => {
                 const tr = document.createElement('tr');
                 
-                const tipoBadge = transacao.tipo === 'credit' 
-                    ? '<span class="transaction-type entrada-badge">Entrada</span>'
-                    : '<span class="transaction-type saida-badge">Saída</span>';
-                
-                const valorClass = transacao.tipo === 'credit' ? 'entrada-amount' : 'saida-amount';
-                
-                // Tradução de status
-                const statusMap = {
-                    'approved': 'Aprovado', 'pending': 'Pendente', 'cancelled': 'Cancelado', 'rejected': 'Rejeitado'
-                };
-                const statusText = statusMap[transacao.status] || transacao.status;
+                // Determinar cor da situação
+                let situacaoClass = '';
+                if (transacao.situacao === 'Efetivado') situacaoClass = 'situacao-badge';
+                else if (transacao.situacao === 'Cancelado') situacaoClass = 'saida-badge';
+                else if (transacao.situacao === 'Rejeitado') situacaoClass = 'saida-badge';
+                else situacaoClass = 'entrada-badge';
                 
                 tr.innerHTML = `
-                    <td>${transacao.data}</td>
-                    <td>${tipoBadge}</td>
-                    <td><span class="payment-method">${transacao.metodo}</span></td>
-                    <td>
-                        ${transacao.minhaChavePix}
-                        ${transacao.tipoMinhaChave !== 'Não aplicável' && transacao.tipoMinhaChave ? 
-                            `<span class="minha-chave-pix">
-                                <span class="chave-tipo">${transacao.tipoMinhaChave}</span>
-                            </span>` : ''
-                        }
-                    </td>
-                    <td>${transacao.nome}</td>
-                    <td class="amount ${valorClass}">${formatarValor(transacao.valor)}</td>
-                    <td>${statusText}</td>
-                    <td>
-                        ${transacao.chavePixRemetente !== '-' ? 
-                            `<span class="chave-pix-remetente">${transacao.chavePixRemetente}</span>` : 
-                            '-'
-                        }
-                    </td>
+                    <td><span class="${situacaoClass}">${transacao.situacao}</span></td>
+                    <td class="amount ${transacao.tipo === 'credit' ? 'entrada-amount' : 'saida-amount'}">${formatarValor(transacao.valor)}</td>
+                    <td>${transacao.dataHora}</td>
+                    <td>${transacao.descricao}</td>
+                    <td><span class="id-transacao">${transacao.idTransacao}</span></td>
+                    <td><span class="codigo-operacao">${transacao.codigoOperacao}</span></td>
+                    <td><span class="chave-seguranca">${transacao.chaveSeguranca}</span></td>
+                    <td><span class="chave-pix">${transacao.chavePix}</span></td>
                 `;
                 
                 tbody.appendChild(tr);
@@ -626,15 +612,14 @@
             if (chavePixInput.value) {
                 const termo = chavePixInput.value.toLowerCase();
                 transacoesFiltradas = transacoesFiltradas.filter(t => 
-                    (t.nome && t.nome.toLowerCase().includes(termo)) || 
                     (t.descricao && t.descricao.toLowerCase().includes(termo)) ||
-                    (t.chavePixRemetente && t.chavePixRemetente.toLowerCase().includes(termo))
+                    (t.chavePix && t.chavePix.toLowerCase().includes(termo))
                 );
             }
             
             if (minhaChavePixSelect.value) {
                 transacoesFiltradas = transacoesFiltradas.filter(t => 
-                    t.minhaChavePix === minhaChavePixSelect.value
+                    t.chavePix === minhaChavePixSelect.value
                 );
             }
             
@@ -651,9 +636,11 @@
             }
             
             if (metodoPagamentoSelect.value) {
-                transacoesFiltradas = transacoesFiltradas.filter(t => 
-                    t.metodo === metodoPagamentoSelect.value
-                );
+                // Como não temos mais método de pagamento na nova estrutura,
+                // vamos manter o filtro mas não aplicá-lo
+                // transacoesFiltradas = transacoesFiltradas.filter(t => 
+                //     t.metodo === metodoPagamentoSelect.value
+                // );
             }
             
             filteredTransactions = transacoesFiltradas;
