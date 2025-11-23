@@ -76,6 +76,18 @@
             border-left: 4px solid var(--secondary);
             font-size: 0.9rem;
         }
+        
+        /* NOVO ESTILO PARA A CHAVE PIX DO REMETENTE */
+        .chave-pix-remetente {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background-color: rgba(0, 166, 80, 0.1);
+            color: var(--success);
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -218,6 +230,7 @@
                         <th>Nome</th>
                         <th>Valor</th>
                         <th>Status</th>
+                        <th>Chave Pix Remetente</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -408,8 +421,8 @@
                 document.querySelector('.card.total p').textContent = 'Saldo Disponível';
 
                 // 4. Busca Pagamentos (Search API)
-                // limit=100 para trazer um bom volume
-                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=100&range=date_created&begin_date=${dtInicio}T00:00:00Z&end_date=${dtFim}T23:59:59Z`;
+                // Aumentei o limite para 500 para trazer mais transações
+                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=500&range=date_created&begin_date=${dtInicio}T00:00:00Z&end_date=${dtFim}T23:59:59Z`;
                 
                 const dados = await fazerRequisicaoAPI(urlPagamentos);
                 
@@ -436,6 +449,7 @@
                 
                 let nome = 'Não identificado';
                 let metodoPagamento = 'Outro';
+                let chavePixRemetente = '-';
 
                 // Determinar método de pagamento
                 if (item.payment_method_id) {
@@ -452,6 +466,34 @@
                     nome = item.description;
                 }
 
+                // NOVO: Tentar identificar a chave PIX do remetente
+                if (item.payment_method_id === 'pix' && tipoTransacao === 'credit') {
+                    // Para transações PIX de entrada, tentamos extrair a chave do remetente
+                    if (item.point_of_interaction && item.point_of_interaction.transaction_data) {
+                        const txData = item.point_of_interaction.transaction_data;
+                        if (txData.qr_code) {
+                            chavePixRemetente = txData.qr_code || 'Chave não identificada';
+                        }
+                    } else if (item.additional_info && item.additional_info.items) {
+                        // Tentar encontrar informações adicionais
+                        const infoAdicional = JSON.stringify(item.additional_info);
+                        if (infoAdicional.includes('@') || infoAdicional.includes('.com') || infoAdicional.includes('.br')) {
+                            // Extrai email se presente
+                            const emailMatch = infoAdicional.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi);
+                            if (emailMatch) chavePixRemetente = emailMatch[0];
+                        } else if (infoAdicional.match(/\d{11,14}/)) {
+                            // Extrai CPF/CNPJ se presente
+                            const cpfCnpjMatch = infoAdicional.match(/\d{11,14}/);
+                            if (cpfCnpjMatch) chavePixRemetente = cpfCnpjMatch[0];
+                        }
+                    }
+                    
+                    // Se não encontrou chave específica, usa informações do pagador
+                    if (chavePixRemetente === '-' && item.payer && item.payer.email) {
+                        chavePixRemetente = item.payer.email;
+                    }
+                }
+
                 // Tentar identificar MINHA chave usada (para preencher sua tabela original)
                 const transacaoParaAnalise = { metodo: metodoPagamento, tipo: tipoTransacao };
                 const minhaChaveUtilizada = identificarMinhaChavePixUtilizada(transacaoParaAnalise);
@@ -466,7 +508,8 @@
                     nome: nome,
                     valor: valor,
                     status: item.status,
-                    descricao: item.description || ''
+                    descricao: item.description || '',
+                    chavePixRemetente: chavePixRemetente
                 };
             });
 
@@ -523,7 +566,7 @@
             tbody.innerHTML = '';
             
             if (transacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">Nenhuma transação encontrada com os filtros aplicados</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">Nenhuma transação encontrada com os filtros aplicados</td></tr>';
                 transactionsCount.textContent = 'Mostrando 0 de 0 transações';
                 return;
             }
@@ -558,6 +601,12 @@
                     <td>${transacao.nome}</td>
                     <td class="amount ${valorClass}">${formatarValor(transacao.valor)}</td>
                     <td>${statusText}</td>
+                    <td>
+                        ${transacao.chavePixRemetente !== '-' ? 
+                            `<span class="chave-pix-remetente">${transacao.chavePixRemetente}</span>` : 
+                            '-'
+                        }
+                    </td>
                 `;
                 
                 tbody.appendChild(tr);
@@ -578,7 +627,8 @@
                 const termo = chavePixInput.value.toLowerCase();
                 transacoesFiltradas = transacoesFiltradas.filter(t => 
                     (t.nome && t.nome.toLowerCase().includes(termo)) || 
-                    (t.descricao && t.descricao.toLowerCase().includes(termo))
+                    (t.descricao && t.descricao.toLowerCase().includes(termo)) ||
+                    (t.chavePixRemetente && t.chavePixRemetente.toLowerCase().includes(termo))
                 );
             }
             
