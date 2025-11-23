@@ -65,6 +65,17 @@
         .credentials-info { background-color: rgba(0, 158, 227, 0.1); color: var(--primary); padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid var(--primary); }
         footer { text-align: center; margin-top: 40px; padding: 20px; color: var(--gray); font-size: 0.9rem; }
         @media (max-width: 768px) { .header-content { flex-direction: column; gap: 15px; } .dashboard-cards { grid-template-columns: 1fr; } table { display: block; overflow-x: auto; } }
+        
+        /* NOVO ESTILO PARA O IDENTIFICADOR */
+        .filtered-totals-info {
+            background-color: rgba(255, 225, 89, 0.1);
+            color: #8a6d00;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--secondary);
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -182,6 +193,12 @@
             </div>
         </div>
         
+        <!-- NOVO ELEMENTO PARA MOSTRAR OS TOTAIS FILTRADOS -->
+        <div class="filtered-totals-info" style="display: none;">
+            <i class="fas fa-info-circle"></i>
+            <span id="filtered-totals-text">Totais calculados com base nos filtros aplicados</span>
+        </div>
+        
         <div class="transactions">
             <div class="transactions-header">
                 <h2>Transações</h2>
@@ -237,10 +254,15 @@
         const tbody = document.querySelector('tbody');
         const connectionStatus = document.querySelector('.connection-status');
         const userInfoText = document.getElementById('user-info-text');
+        
+        // NOVOS ELEMENTOS PARA OS TOTAIS FILTRADOS
+        const filteredTotalsInfo = document.querySelector('.filtered-totals-info');
+        const filteredTotalsText = document.getElementById('filtered-totals-text');
 
         let allTransactions = [];
         let filteredTransactions = [];
         let minhasChavesPix = [];
+        let saldoGeral = 0; // Variável para armazenar o saldo geral
 
         // Formatar valor para Real brasileiro
         function formatarValor(valor) {
@@ -381,8 +403,8 @@
                 const dtFim = dataFimInput.value;
 
                 // 3. Atualiza Saldo
-                const saldoValor = await buscarSaldo();
-                document.querySelector('.card.total .value').textContent = formatarValor(saldoValor);
+                saldoGeral = await buscarSaldo();
+                document.querySelector('.card.total .value').textContent = formatarValor(saldoGeral);
                 document.querySelector('.card.total p').textContent = 'Saldo Disponível';
 
                 // 4. Busca Pagamentos (Search API)
@@ -458,12 +480,42 @@
             table.style.display = 'table';
         }
 
+        // NOVA FUNÇÃO: Atualizar totais com base nas transações filtradas
+        function atualizarTotaisFiltrados(transacoes) {
+            const entradas = transacoes.filter(t => t.tipo === 'credit').reduce((sum, t) => sum + t.valor, 0);
+            const saidas = transacoes.filter(t => t.tipo === 'debit').reduce((sum, t) => sum + t.valor, 0);
+            const total = entradas - saidas;
+            
+            document.querySelector('.card.entrada .value').textContent = formatarValor(entradas);
+            document.querySelector('.card.saida .value').textContent = formatarValor(saidas);
+            document.querySelector('.card.total .value').textContent = formatarValor(total);
+            
+            // Atualizar textos informativos
+            document.querySelector('.card.entrada p').textContent = 'Entradas (filtradas)';
+            document.querySelector('.card.saida p').textContent = 'Saídas (filtradas)';
+            document.querySelector('.card.total p').textContent = 'Saldo (filtrado)';
+            
+            // Mostrar identificador de totais filtrados
+            filteredTotalsInfo.style.display = 'block';
+            filteredTotalsText.textContent = `Totais calculados com base nos filtros aplicados: ${transacoes.length} transações`;
+        }
+
+        // FUNÇÃO ORIGINAL: Atualizar contadores com todas as transações
         function atualizarContadores() {
             const entradas = allTransactions.filter(t => t.tipo === 'credit').reduce((sum, t) => sum + t.valor, 0);
             const saidas = allTransactions.filter(t => t.tipo === 'debit').reduce((sum, t) => sum + t.valor, 0);
             
             document.querySelector('.card.entrada .value').textContent = formatarValor(entradas);
             document.querySelector('.card.saida .value').textContent = formatarValor(saidas);
+            document.querySelector('.card.total .value').textContent = formatarValor(saldoGeral);
+            
+            // Restaurar textos originais
+            document.querySelector('.card.entrada p').textContent = 'Total de Entradas';
+            document.querySelector('.card.saida p').textContent = 'Total de Saídas';
+            document.querySelector('.card.total p').textContent = 'Saldo Disponível';
+            
+            // Esconder identificador de totais filtrados
+            filteredTotalsInfo.style.display = 'none';
         }
 
         // Renderizar transações (Mantendo a estrutura exata da tabela original)
@@ -556,6 +608,9 @@
             
             filteredTransactions = transacoesFiltradas;
             renderizarTransacoes(filteredTransactions);
+            
+            // NOVA CHAMADA: Atualizar totais com base nas transações filtradas
+            atualizarTotaisFiltrados(filteredTransactions);
         }
 
         function limparFiltros() {
@@ -574,6 +629,9 @@
             dataFimInput.value = hoje.toISOString().split('T')[0];
             
             aplicarFiltros();
+            
+            // NOVA CHAMADA: Restaurar totais originais
+            atualizarContadores();
         }
 
         function limparMensagens() {
