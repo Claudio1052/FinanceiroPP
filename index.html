@@ -172,6 +172,17 @@
         .oferta-badge { background-color: rgba(23, 162, 184, 0.1); color: var(--accent); }
         .outro-badge { background-color: rgba(108, 117, 125, 0.1); color: var(--gray); }
         
+        .igreja-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .igreja-inga { background-color: rgba(26, 75, 140, 0.1); color: var(--primary); }
+        .igreja-zona-leste { background-color: rgba(23, 162, 184, 0.1); color: var(--accent); }
+        .igreja-nao-identificada { background-color: rgba(108, 117, 125, 0.1); color: var(--gray); }
+        
         /* ESTILOS DE ESTADO */
         .loading { text-align: center; padding: 40px; color: var(--gray); }
         .loading i { font-size: 2rem; margin-bottom: 10px; }
@@ -329,6 +340,7 @@
                         <option value="">Todas</option>
                         <option value="inga">Verbo da Vida Ingá</option>
                         <option value="zona-leste">Verbo da Vida Zona Leste</option>
+                        <option value="nao-identificada">Não Identificada</option>
                     </select>
                 </div>
             </div>
@@ -369,7 +381,6 @@
                         <th>Valor</th>
                         <th>Data/Hora</th>
                         <th>Doador</th>
-                        <th>Tipo</th>
                         <th>Igreja</th>
                         <th>Método Pagamento</th>
                         <th>ID Transação</th>
@@ -640,6 +651,34 @@
             }
         }
 
+        // Função para identificar a igreja baseada nas observações
+        function identificarIgreja(descricao, observacoes) {
+            const textoCompleto = (descricao + ' ' + observacoes).toLowerCase();
+            
+            // Palavras-chave para Verbo da Vida Ingá
+            const palavrasInga = ['inga', 'ingá', 'ingar', 'verbo inga', 'verbo ingá', 'verbodaingá', 'verbodainga'];
+            
+            // Palavras-chave para Verbo da Vida Zona Leste
+            const palavrasZonaLeste = ['zona leste', 'zonaleste', 'verbo zona leste', 'verbo zonaleste', 'verbo zon leste'];
+            
+            // Verificar se há palavras relacionadas à Ingá
+            for (const palavra of palavrasInga) {
+                if (textoCompleto.includes(palavra)) {
+                    return 'inga';
+                }
+            }
+            
+            // Verificar se há palavras relacionadas à Zona Leste
+            for (const palavra of palavrasZonaLeste) {
+                if (textoCompleto.includes(palavra)) {
+                    return 'zona-leste';
+                }
+            }
+            
+            // Se não encontrou correspondência, retornar não identificada
+            return 'nao-identificada';
+        }
+
         // Processar dados reais da API e mapear para o formato do seu HTML original
         function processarDadosReais(dados) {
             allTransactions = dados.map(item => {
@@ -704,13 +743,8 @@
                     tipoDoacao = 'oferta';
                 }
                 
-                // NOVO: Determinar igreja baseado na descrição ou aleatoriamente
-                let igreja = Math.random() > 0.5 ? 'inga' : 'zona-leste';
-                if (descricao.toLowerCase().includes('ingá') || descricao.toLowerCase().includes('inga')) {
-                    igreja = 'inga';
-                } else if (descricao.toLowerCase().includes('zona leste')) {
-                    igreja = 'zona-leste';
-                }
+                // NOVO: Determinar igreja baseado na descrição e observações
+                const igreja = identificarIgreja(descricao, item.description || '');
 
                 return {
                     id: item.id,
@@ -816,7 +850,7 @@
             tbody.innerHTML = '';
             
             if (transacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">Nenhuma doação encontrada com os filtros aplicados</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">Nenhuma doação encontrada com os filtros aplicados</td></tr>';
                 transactionsCount.textContent = 'Mostrando 0 de 0 doações';
                 return;
             }
@@ -831,26 +865,18 @@
                 else if (transacao.situacao === 'Rejeitado') situacaoClass = 'situacao-cancelado';
                 else situacaoClass = 'situacao-pendente';
                 
-                // Determinar badge de tipo de doação
-                let tipoTexto = '';
-                let tipoClass = '';
-                if (transacao.tipoDoacao === 'dizimo') {
-                    tipoTexto = 'Dízimo';
-                    tipoClass = 'dizimo-badge';
-                } else if (transacao.tipoDoacao === 'oferta') {
-                    tipoTexto = 'Oferta';
-                    tipoClass = 'oferta-badge';
-                } else {
-                    tipoTexto = 'Outro';
-                    tipoClass = 'outro-badge';
-                }
-                
-                // Determinar igreja
+                // Determinar badge de igreja
                 let igrejaTexto = '';
+                let igrejaClass = '';
                 if (transacao.igreja === 'inga') {
                     igrejaTexto = 'Verbo da Vida Ingá';
+                    igrejaClass = 'igreja-inga';
                 } else if (transacao.igreja === 'zona-leste') {
                     igrejaTexto = 'Verbo da Vida Zona Leste';
+                    igrejaClass = 'igreja-zona-leste';
+                } else {
+                    igrejaTexto = 'Não Identificada';
+                    igrejaClass = 'igreja-nao-identificada';
                 }
                 
                 tr.innerHTML = `
@@ -858,8 +884,7 @@
                     <td class="amount ${transacao.tipo === 'credit' ? 'entrada-amount' : 'saida-amount'}">${formatarValor(transacao.valor)}</td>
                     <td>${transacao.dataHora}</td>
                     <td>${transacao.doador}</td>
-                    <td><span class="tipo-doacao-badge ${tipoClass}">${tipoTexto}</span></td>
-                    <td>${igrejaTexto}</td>
+                    <td><span class="igreja-badge ${igrejaClass}">${igrejaTexto}</span></td>
                     <td><span class="payment-method">${transacao.metodoPagamento}</span></td>
                     <td><span class="id-transacao">${transacao.idTransacao}</span></td>
                     <td>${transacao.observacoes || '-'}</td>
@@ -969,7 +994,7 @@
                     `"${transacao.doador}"`,
                     transacao.valor.toFixed(2),
                     transacao.tipoDoacao === 'dizimo' ? 'Dízimo' : (transacao.tipoDoacao === 'oferta' ? 'Oferta' : 'Outro'),
-                    transacao.igreja === 'inga' ? 'Verbo da Vida Ingá' : 'Verbo da Vida Zona Leste',
+                    transacao.igreja === 'inga' ? 'Verbo da Vida Ingá' : (transacao.igreja === 'zona-leste' ? 'Verbo da Vida Zona Leste' : 'Não Identificada'),
                     transacao.metodoPagamento,
                     transacao.situacao,
                     `"${transacao.observacoes || ''}"`
