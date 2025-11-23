@@ -277,6 +277,23 @@
             color: var(--primary);
         }
         
+        .chave-pix-info {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 4px;
+        }
+        
+        .chave-tipo {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            background-color: rgba(255, 225, 89, 0.2);
+            color: #8a6d00;
+        }
+        
         .loading {
             text-align: center;
             padding: 40px;
@@ -518,6 +535,46 @@
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
         }
 
+        // Função para identificar o tipo da chave PIX
+        function identificarTipoChavePix(chave) {
+            if (!chave || chave === 'N/A' || chave === 'Movimento de conta') {
+                return { tipo: 'Não informado', chave: chave };
+            }
+            
+            // Verificar se é email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (emailRegex.test(chave)) {
+                return { tipo: 'E-mail', chave: chave };
+            }
+            
+            // Verificar se é CPF (11 dígitos)
+            const cpfRegex = /^\d{11}$/;
+            if (cpfRegex.test(chave.replace(/\D/g, ''))) {
+                return { tipo: 'CPF', chave: chave };
+            }
+            
+            // Verificar se é CNPJ (14 dígitos)
+            const cnpjRegex = /^\d{14}$/;
+            if (cnpjRegex.test(chave.replace(/\D/g, ''))) {
+                return { tipo: 'CNPJ', chave: chave };
+            }
+            
+            // Verificar se é telefone (com DDD)
+            const telefoneRegex = /^(\+55\s?)?(\(?\d{2}\)?[\s-]?)?\d{4,5}[\s-]?\d{4}$/;
+            if (telefoneRegex.test(chave)) {
+                return { tipo: 'Telefone', chave: chave };
+            }
+            
+            // Verificar se é chave aleatória (UUID)
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (uuidRegex.test(chave)) {
+                return { tipo: 'Chave Aleatória', chave: chave };
+            }
+            
+            // Se não se encaixar em nenhum padrão conhecido
+            return { tipo: 'Outro', chave: chave };
+        }
+
         // Função para fazer requisições à API
         async function fazerRequisicaoAPI(url) {
             try {
@@ -706,12 +763,16 @@
                         }
                     }
 
+                    // Identificar o tipo da chave PIX
+                    const infoChave = identificarTipoChavePix(chavePix);
+
                     return {
                         id: item.id,
                         data: new Date(item.date_created).toLocaleDateString('pt-BR'),
                         tipo: tipoTransacao,
                         metodo: metodoPagamento,
-                        chavePix: chavePix,
+                        chavePix: infoChave.chave,
+                        tipoChave: infoChave.tipo,
                         nome: nome,
                         valor: Math.abs(valor),
                         status: item.status,
@@ -723,12 +784,15 @@
                     const valor = item.amount || 0;
                     const tipoTransacao = valor >= 0 ? 'credit' : 'debit';
                     
+                    const infoChave = identificarTipoChavePix('Movimento de conta');
+                    
                     return {
                         id: item.id,
                         data: new Date(item.date_created).toLocaleDateString('pt-BR'),
                         tipo: tipoTransacao,
                         metodo: 'Movimento de conta',
-                        chavePix: 'N/A',
+                        chavePix: infoChave.chave,
+                        tipoChave: infoChave.tipo,
                         nome: item.detail || 'Movimento financeiro',
                         valor: Math.abs(valor),
                         status: 'processed',
@@ -804,7 +868,12 @@
                     <td>${transacao.data}</td>
                     <td>${tipoBadge}</td>
                     <td><span class="payment-method">${transacao.metodo}</span></td>
-                    <td>${transacao.chavePix}</td>
+                    <td>
+                        ${transacao.chavePix}
+                        <span class="chave-pix-info">
+                            <span class="chave-tipo">${transacao.tipoChave}</span>
+                        </span>
+                    </td>
                     <td>${transacao.nome}</td>
                     <td class="amount ${valorClass}">${formatarValor(transacao.valor)}</td>
                     <td>${statusText}</td>
@@ -830,7 +899,8 @@
                 const termo = chavePixInput.value.toLowerCase();
                 transacoesFiltradas = transacoesFiltradas.filter(t => 
                     t.chavePix.toLowerCase().includes(termo) ||
-                    t.nome.toLowerCase().includes(termo)
+                    t.nome.toLowerCase().includes(termo) ||
+                    t.tipoChave.toLowerCase().includes(termo)
                 );
             }
             
