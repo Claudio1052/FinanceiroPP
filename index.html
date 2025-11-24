@@ -1405,7 +1405,7 @@
             container.insertBefore(successDiv, document.querySelector('.dashboard-cards'));
         }
 
-        // NOVA FUNÇÃO: Carregar dados do histórico do Supabase
+        // FUNÇÃO CORRIGIDA: Carregar dados do histórico diretamente da API do Mercado Pago
         async function carregarHistoricoMensal() {
             try {
                 historicoLoading.style.display = 'block';
@@ -1414,31 +1414,27 @@
                 const anoSelecionado = anoFiltroSelect.value;
                 const igrejaSelecionada = igrejaFiltroSelect.value;
                 
-                // Buscar dados do Supabase
-                let query = supabase
-                    .from('transacoes')
-                    .select('*')
-                    .eq('ano', anoSelecionado);
+                // Buscar dados diretamente da API do Mercado Pago
+                const inicioAno = `${anoSelecionado}-01-01`;
+                const fimAno = `${anoSelecionado}-12-31`;
                 
-                if (igrejaSelecionada !== 'todas') {
-                    query = query.eq('igreja', igrejaSelecionada);
+                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=1000&range=date_created&begin_date=${inicioAno}T00:00:00Z&end_date=${fimAno}T23:59:59Z`;
+                
+                const dados = await fazerRequisicaoAPI(urlPagamentos);
+                
+                if (dados.results) {
+                    // Processar dados para agrupar por mês
+                    const dadosPorMes = processarDadosPorMes(dados.results, anoSelecionado, igrejaSelecionada);
+                    
+                    // Atualizar gráfico e tabela
+                    atualizarGrafico(dadosPorMes);
+                    atualizarTabelaHistorico(dadosPorMes);
+                    
+                    historicoLoading.style.display = 'none';
+                    tabelaHistorico.style.display = 'table';
+                } else {
+                    throw new Error('Nenhum dado encontrado para o período selecionado');
                 }
-                
-                const { data, error } = await query;
-                
-                if (error) {
-                    throw error;
-                }
-                
-                // Processar dados para agrupar por mês
-                const dadosPorMes = processarDadosPorMes(data);
-                
-                // Atualizar gráfico e tabela
-                atualizarGrafico(dadosPorMes);
-                atualizarTabelaHistorico(dadosPorMes);
-                
-                historicoLoading.style.display = 'none';
-                tabelaHistorico.style.display = 'table';
                 
             } catch (error) {
                 console.error('Erro ao carregar histórico:', error);
@@ -1446,8 +1442,8 @@
             }
         }
 
-        // NOVA FUNÇÃO: Processar dados agrupados por mês
-        function processarDadosPorMes(dados) {
+        // FUNÇÃO CORRIGIDA: Processar dados agrupados por mês a partir da API do Mercado Pago
+        function processarDadosPorMes(dados, ano, igrejaFiltro) {
             const meses = [
                 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
@@ -1464,21 +1460,32 @@
                     entradas: 0,
                     saidas: 0,
                     saldo: 0,
-                    igreja: igrejaFiltroSelect.value === 'todas' ? 'Todas' : igrejaFiltroSelect.value
+                    igreja: igrejaFiltro === 'todas' ? 'Todas' : igrejaFiltro
                 };
             });
             
-            // Processar transações
+            // Processar transações da API do Mercado Pago
             dados.forEach(transacao => {
-                const data = new Date(transacao.data);
+                const data = new Date(transacao.date_created);
                 const mesNumero = data.getMonth() + 1;
                 const mesNome = meses[data.getMonth()];
                 const chave = `${mesNumero}-${mesNome}`;
                 
-                if (transacao.tipo === 'entrada') {
-                    resultado[chave].entradas += transacao.valor;
-                } else if (transacao.tipo === 'saida') {
-                    resultado[chave].saidas += transacao.valor;
+                // Determinar tipo (entrada/saída)
+                const tipo = (transacao.status_detail === 'accredited' || transacao.operation_type === 'regular_payment') ? 'entrada' : 'saida';
+                
+                // Determinar igreja baseada na descrição
+                const igreja = identificarIgreja(transacao.description || '', transacao.description || '');
+                
+                // Aplicar filtro de igreja
+                if (igrejaFiltro !== 'todas' && igreja !== igrejaFiltro) {
+                    return; // Pula esta transação se não corresponder ao filtro
+                }
+                
+                if (tipo === 'entrada') {
+                    resultado[chave].entradas += transacao.transaction_amount || 0;
+                } else if (tipo === 'saida') {
+                    resultado[chave].saidas += transacao.transaction_amount || 0;
                 }
                 
                 resultado[chave].saldo = resultado[chave].entradas - resultado[chave].saidas;
@@ -1487,7 +1494,7 @@
             return Object.values(resultado);
         }
 
-        // NOVA FUNÇÃO: Atualizar gráfico de barras
+        // NOVA FUNÇÃO: Atualizar gráfico de barras (mantida igual)
         function atualizarGrafico(dados) {
             graficoBarras.innerHTML = '';
             
@@ -1516,7 +1523,7 @@
             });
         }
 
-        // NOVA FUNÇÃO: Atualizar tabela de histórico
+        // NOVA FUNÇÃO: Atualizar tabela de histórico (mantida igual)
         function atualizarTabelaHistorico(dados) {
             const tbody = tabelaHistorico.querySelector('tbody');
             tbody.innerHTML = '';
