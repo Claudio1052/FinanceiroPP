@@ -763,13 +763,6 @@
         const ACCESS_TOKEN = 'APP_USR-7942402403468023-112215-a0799e629a61e1568f394d40728fed58-674529245';
         const API_BASE_URL = 'https://api.mercadopago.com';
 
-        // Mapeamento de chaves PIX para igrejas (fallback caso a API falhe)
-        const CHAVES_PIX_IGREJAS = {
-            '83991993505': 'inga',
-            '83996680020': 'zona-leste',
-            'financeiro@verboestacao.com': 'estacao'
-        };
-
         // Elementos DOM
         const loginScreen = document.getElementById('loginScreen');
         const mainSystem = document.getElementById('mainSystem');
@@ -874,119 +867,120 @@
             }
         }
 
-        // Buscar minhas chaves PIX da API do Mercado Pago
+        // Buscar minhas chaves PIX da API do Mercado Pago - APENAS CHAVES REAIS
         async function buscarMinhasChavesPix() {
             try {
-                console.log('Buscando minhas chaves PIX da API...');
+                console.log('Buscando minhas chaves PIX reais da API...');
                 
                 // Tentar diferentes endpoints da API para buscar chaves PIX
                 let chavesPix = [];
                 
                 try {
-                    // Endpoint para buscar chaves PIX
+                    // Primeiro endpoint: /v1/pix/keys (endpoint oficial)
                     const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/pix/keys`);
                     
                     if (data && Array.isArray(data)) {
-                        chavesPix = data.map(chave => ({
-                            id: chave.id,
-                            chave: chave.key_value || chave.key,
-                            tipo: chave.key_type,
-                            status: chave.status || 'active',
-                            // Determinar igreja baseada na chave
-                            igreja: identificarIgrejaPorChave(chave.key_value || chave.key)
-                        }));
+                        chavesPix = data
+                            .filter(chave => chave.status === 'active' || chave.status === 'approved')
+                            .map(chave => ({
+                                id: chave.id,
+                                chave: chave.key || chave.key_value || chave.value,
+                                tipo: chave.key_type || 'unknown',
+                                status: chave.status || 'active',
+                                // Se não conseguimos identificar a igreja, será definida posteriormente
+                                igreja: identificarIgrejaPorChavePix(chave.key || chave.key_value || chave.value)
+                            }));
                     }
                 } catch (apiError) {
-                    console.warn('Primeiro endpoint de chaves PIX falhou:', apiError);
+                    console.warn('Endpoint /v1/pix/keys falhou:', apiError);
                     
-                    // Tentar endpoint alternativo
+                    // Tentar endpoint alternativo: /users/me pode ter informações de chaves
                     try {
                         const userData = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me`);
                         if (userData) {
-                            // Criar chaves baseadas nas informações do usuário
+                            // Extrair possíveis chaves do perfil do usuário
                             chavesPix = [];
+                            
+                            // Email do usuário pode ser uma chave PIX
                             if (userData.email) {
                                 chavesPix.push({
-                                    id: 'email-' + userData.email,
+                                    id: 'user-email',
                                     chave: userData.email,
                                     tipo: 'email',
                                     status: 'active',
-                                    igreja: identificarIgrejaPorChave(userData.email)
+                                    igreja: 'estacao' // Padrão: Verbo da Vida Estação
                                 });
                             }
                             
-                            // Adicionar chaves fixas como fallback
-                            for (const [chave, igreja] of Object.entries(CHAVES_PIX_IGREJAS)) {
+                            // CPF/CNPJ pode ser uma chave PIX
+                            if (userData.identification && userData.identification.number) {
                                 chavesPix.push({
-                                    id: 'fallback-' + chave,
-                                    chave: chave,
-                                    tipo: chave.includes('@') ? 'email' : 'telefone',
+                                    id: 'user-identification',
+                                    chave: userData.identification.number,
+                                    tipo: userData.identification.type || 'cpf',
                                     status: 'active',
-                                    igreja: igreja
+                                    igreja: 'estacao' // Padrão: Verbo da Vida Estação
                                 });
                             }
                         }
                     } catch (userError) {
-                        console.warn('Endpoint de usuário falhou:', userError);
-                        
-                        // Usar apenas as chaves fixas
-                        chavesPix = Object.entries(CHAVES_PIX_IGREJAS).map(([chave, igreja], index) => ({
-                            id: 'fixed-' + index,
-                            chave: chave,
-                            tipo: chave.includes('@') ? 'email' : 'telefone',
-                            status: 'active',
-                            igreja: igreja
-                        }));
+                        console.warn('Endpoint /users/me falhou:', userError);
+                        // Se ambos falharem, manter array vazio - sistema usará padrão
                     }
                 }
                 
-                console.log('Chaves PIX encontradas:', chavesPix);
+                console.log('Chaves PIX reais encontradas:', chavesPix);
                 minhasChavesPix = chavesPix;
                 atualizarFiltroChavesPix();
                 return chavesPix;
 
             } catch (error) {
                 console.error('Erro ao buscar chaves PIX:', error);
-                
-                // Fallback: usar as chaves fixas
-                minhasChavesPix = Object.entries(CHAVES_PIX_IGREJAS).map(([chave, igreja], index) => ({
-                    id: 'fallback-' + index,
-                    chave: chave,
-                    tipo: chave.includes('@') ? 'email' : 'telefone',
-                    status: 'active',
-                    igreja: igreja
-                }));
-                
+                // Se falhar completamente, usar array vazio - todas serão classificadas como Estação
+                minhasChavesPix = [];
                 atualizarFiltroChavesPix();
-                return minhasChavesPix;
+                return [];
             }
         }
 
-        // Identificar igreja baseada na chave PIX
-        function identificarIgrejaPorChave(chave) {
-            if (!chave) return 'nao-identificada';
+        // Identificar igreja baseada na chave PIX - AGORA APENAS COM CHAVES REAIS
+        function identificarIgrejaPorChavePix(chave) {
+            if (!chave) return 'estacao'; // Padrão: Verbo da Vida Estação
             
             // Normalizar chave para comparação
             const chaveLimpa = chave.replace(/\D/g, '');
             
-            // Verificar nas chaves conhecidas
-            for (const [chaveConhecida, igreja] of Object.entries(CHAVES_PIX_IGREJAS)) {
-                const chaveConhecidaLimpa = chaveConhecida.replace(/\D/g, '');
-                
-                if (chaveConhecida.includes('@')) {
-                    // Para emails, verificar correspondência exata
-                    if (chave.toLowerCase().includes(chaveConhecida.toLowerCase())) {
-                        return igreja;
+            // Verificar se esta chave corresponde a alguma das minhas chaves reais
+            for (const minhaChave of minhasChavesPix) {
+                // Para emails, verificar correspondência
+                if (minhaChave.tipo === 'email' && chave.includes('@')) {
+                    if (chave.toLowerCase().includes(minhaChave.chave.toLowerCase()) || 
+                        minhaChave.chave.toLowerCase().includes(chave.toLowerCase())) {
+                        return minhaChave.igreja;
                     }
-                } else {
-                    // Para telefones, verificar se há correspondência
-                    if (chaveLimpa.includes(chaveConhecidaLimpa) || chaveConhecidaLimpa.includes(chaveLimpa)) {
-                        return igreja;
+                }
+                
+                // Para telefones, normalizar e comparar
+                if (minhaChave.tipo === 'telefone' || minhaChave.tipo === 'phone') {
+                    const minhaChaveLimpa = minhaChave.chave.replace(/\D/g, '');
+                    
+                    if (chaveLimpa.includes(minhaChaveLimpa) || 
+                        minhaChaveLimpa.includes(chaveLimpa)) {
+                        return minhaChave.igreja;
+                    }
+                }
+                
+                // Para CPF/CNPJ, comparar diretamente
+                if (minhaChave.tipo === 'cpf' || minhaChave.tipo === 'cnpj') {
+                    if (chave.includes(minhaChave.chave) || 
+                        minhaChave.chave.includes(chave)) {
+                        return minhaChave.igreja;
                     }
                 }
             }
             
-            return 'nao-identificada';
+            // SE NÃO ENCONTRAR CORRESPONDÊNCIA COM NENHUMA CHAVE REAL → VERBO DA VIDA ESTAÇÃO
+            return 'estacao';
         }
 
         // Atualizar o select de filtro de chaves PIX
@@ -1003,7 +997,7 @@
                 });
                 console.log('Filtro de chaves Pix atualizado com sucesso');
             } else {
-                console.warn('Nenhuma chave Pix encontrada para preencher o filtro');
+                console.log('Nenhuma chave Pix real encontrada na conta');
             }
         }
 
@@ -1013,43 +1007,40 @@
                 case 'inga': return 'Verbo da Vida Ingá';
                 case 'zona-leste': return 'Verbo da Vida Zona Leste';
                 case 'estacao': return 'Verbo da Vida Estação';
-                default: return 'Não Identificada';
+                default: return 'Verbo da Vida Estação'; // Padrão
             }
         }
 
-        // Identificar qual chave Pix foi utilizada na transação
+        // Identificar qual chave Pix foi utilizada na transação - APENAS CHAVES REAIS
         function identificarMinhaChavePixUtilizada(transacao) {
             // Para transações de entrada (crédito) via PIX
             if (transacao.tipo === 'credit' && transacao.metodoPagamento === 'PIX') {
-                // Normalizar a chave da transação para comparação
                 const chaveTransacao = transacao.chavePix || '';
                 
-                // Verificar se corresponde a alguma das minhas chaves
+                // Verificar se corresponde a alguma das minhas chaves REAIS
                 for (const minhaChave of minhasChavesPix) {
-                    // Para emails, verificar correspondência exata ou parcial
+                    // Comparação inteligente baseada no tipo de chave
                     if (minhaChave.tipo === 'email' && chaveTransacao.includes('@')) {
                         if (chaveTransacao.toLowerCase().includes(minhaChave.chave.toLowerCase())) {
                             return minhaChave;
                         }
-                    }
-                    
-                    // Para telefones, normalizar e comparar
-                    if (minhaChave.tipo === 'telefone') {
+                    } else if (minhaChave.tipo === 'telefone' || minhaChave.tipo === 'phone') {
                         const chaveTransacaoLimpa = chaveTransacao.replace(/\D/g, '');
                         const minhaChaveLimpa = minhaChave.chave.replace(/\D/g, '');
                         
-                        if (chaveTransacaoLimpa.includes(minhaChaveLimpa) || minhaChaveLimpa.includes(chaveTransacaoLimpa)) {
+                        if (chaveTransacaoLimpa.includes(minhaChaveLimpa)) {
                             return minhaChave;
                         }
-                    }
-                    
-                    // Verificar correspondência direta
-                    if (chaveTransacao.includes(minhaChave.chave) || minhaChave.chave.includes(chaveTransacao)) {
-                        return minhaChave;
+                    } else {
+                        // Para outros tipos (cpf, cnpj, etc.)
+                        if (chaveTransacao.includes(minhaChave.chave)) {
+                            return minhaChave;
+                        }
                     }
                 }
             }
             
+            // Se não encontrou correspondência com nenhuma chave real
             return null;
         }
 
@@ -1076,7 +1067,7 @@
                 loadingDiv.style.display = 'block';
                 table.style.display = 'none';
                 
-                // Buscar chaves PIX primeiro
+                // Buscar chaves PIX reais primeiro
                 await buscarMinhasChavesPix();
                 
                 // Define datas
@@ -1136,7 +1127,7 @@
                 const idTransacao = item.id || 'N/A';
                 
                 // Chave Pix (tentar extrair de vários lugares)
-                let chavePix = 'N/A';
+                let chavePix = '';
                 
                 // 1. Verificar se há dados do pagador
                 if (item.payer && item.payer.email) {
@@ -1171,7 +1162,7 @@
                 // Determinar tipo (entrada/saída)
                 const tipo = (item.status_detail === 'accredited' || item.operation_type === 'regular_payment') ? 'credit' : 'debit';
                 
-                // Identificar qual chave Pix minha foi utilizada
+                // Identificar qual chave Pix minha foi utilizada (apenas chaves reais)
                 const transacaoParaAnalise = { 
                     tipo: tipo, 
                     metodoPagamento: metodoPagamento,
@@ -1179,13 +1170,13 @@
                 };
                 const minhaChaveUtilizada = identificarMinhaChavePixUtilizada(transacaoParaAnalise);
                 
-                // Identificar igreja
-                let igreja = 'nao-identificada';
+                // Identificar igreja - SE NÃO ENCONTRAR CHAVE REAL → VERBO DA VIDA ESTAÇÃO
+                let igreja = 'estacao'; // PADRÃO: Verbo da Vida Estação
                 if (minhaChaveUtilizada) {
                     igreja = minhaChaveUtilizada.igreja;
                 } else {
-                    // Fallback: tentar identificar pela chave PIX
-                    igreja = identificarIgrejaPorChave(chavePix);
+                    // Se não encontrou chave correspondente, tentar identificar pela chave PIX
+                    igreja = identificarIgrejaPorChavePix(chavePix);
                 }
 
                 // Determinar tipo de doação baseado na descrição
@@ -1225,7 +1216,7 @@
                     metodoPagamento: metodoPagamento,
                     minhaChaveUtilizada: minhaChaveUtilizada,
                     observacoes: item.description || '',
-                    chavePixUsada: minhaChaveUtilizada ? minhaChaveUtilizada.chave : 'Chave não identificada'
+                    chavePixUsada: minhaChaveUtilizada ? minhaChaveUtilizada.chave : (chavePix || 'Chave não identificada')
                 };
             });
 
@@ -1309,16 +1300,16 @@
                     igrejaTexto = 'Verbo da Vida Estação';
                     igrejaClass = 'igreja-estacao';
                 } else {
-                    igrejaTexto = 'Não Identificada';
-                    igrejaClass = 'igreja-nao-identificada';
+                    igrejaTexto = 'Verbo da Vida Estação'; // Padrão
+                    igrejaClass = 'igreja-estacao';
                 }
                 
                 // Informações da chave PIX usada
                 let chavePixInfo = '-';
                 if (transacao.minhaChaveUtilizada) {
                     chavePixInfo = `${transacao.minhaChaveUtilizada.chave} (${transacao.minhaChaveUtilizada.tipo})`;
-                } else if (transacao.metodoPagamento === 'PIX') {
-                    chavePixInfo = 'Outra chave PIX';
+                } else if (transacao.metodoPagamento === 'PIX' && transacao.chavePix) {
+                    chavePixInfo = `${transacao.chavePix} (não cadastrada)`;
                 }
                 
                 tr.innerHTML = `
@@ -1389,7 +1380,7 @@
                 );
             }
             
-            // NOVO FILTRO: Chave PIX usada
+            // FILTRO: Chave PIX usada (apenas chaves reais)
             if (chavePixSelect.value) {
                 transacoesFiltradas = transacoesFiltradas.filter(t => {
                     if (!t.minhaChaveUtilizada) return false;
@@ -1444,7 +1435,7 @@
                     transacao.tipoDoacao === 'dizimo' ? 'Dízimo' : (transacao.tipoDoacao === 'oferta' ? 'Oferta' : 'Outro'),
                     obterNomeIgreja(transacao.igreja),
                     transacao.metodoPagamento,
-                    transacao.minhaChaveUtilizada ? transacao.minhaChaveUtilizada.chave : 'Outra',
+                    transacao.minhaChaveUtilizada ? transacao.minhaChaveUtilizada.chave : (transacao.chavePix || 'Outra'),
                     transacao.situacao,
                     `"${transacao.observacoes || ''}"`
                 ].join(',');
@@ -1565,7 +1556,7 @@
                     chavePix = transacao.payer.email;
                 }
                 
-                const igreja = identificarIgrejaPorChave(chavePix);
+                const igreja = identificarIgrejaPorChavePix(chavePix);
                 
                 // Aplicar filtro de igreja
                 if (igrejaFiltro !== 'todas' && igreja !== igrejaFiltro) {
