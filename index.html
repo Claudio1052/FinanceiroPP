@@ -613,7 +613,7 @@
                     </div>
                     <div class="filter-row">
                         <div class="filter-group">
-                            <label for="chave-pix">Chave Pix Usada</label>
+                            <label for="chave-pix">Chave Pix Utilizada</label>
                             <select id="chave-pix">
                                 <option value="">Todas as Chaves</option>
                                 <!-- As opções serão preenchidas dinamicamente via JavaScript -->
@@ -686,7 +686,7 @@
                     </div>
                     <div class="filter-group">
                         <label for="igreja-filtro">Igreja</label>
-                        <select id="igreja-filtro">
+                            <select id="igreja-filtro">
                             <option value="todas">Todas as Igrejas</option>
                             <option value="inga">Verbo da Vida Ingá</option>
                             <option value="zona-leste">Verbo da Vida Zona Leste</option>
@@ -763,12 +763,12 @@
         const ACCESS_TOKEN = 'APP_USR-7942402403468023-112215-a0799e629a61e1568f394d40728fed58-674529245';
         const API_BASE_URL = 'https://api.mercadopago.com';
 
-        // MINHAS CHAVES PIX FIXAS
-        const MINHAS_CHAVES_PIX = [
-            { chave: '83991993505', tipo: 'telefone', igreja: 'inga' },
-            { chave: '83996680020', tipo: 'telefone', igreja: 'zona-leste' },
-            { chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' }
-        ];
+        // Mapeamento de chaves PIX para igrejas (fallback caso a API falhe)
+        const CHAVES_PIX_IGREJAS = {
+            '83991993505': 'inga',
+            '83996680020': 'zona-leste',
+            'financeiro@verboestacao.com': 'estacao'
+        };
 
         // Elementos DOM
         const loginScreen = document.getElementById('loginScreen');
@@ -798,7 +798,7 @@
         const tbody = document.querySelector('tbody');
         const connectionStatus = document.querySelector('.connection-status');
         const userInfoText = document.getElementById('user-info-text');
-        const churchButtons = document.querySelectorAll('.church-btn');
+        let churchButtons = document.querySelectorAll('.church-btn');
         
         // NOVOS ELEMENTOS PARA OS TOTAIS FILTRADOS
         const filteredTotalsInfo = document.querySelector('.filtered-totals-info');
@@ -817,7 +817,7 @@
 
         let allTransactions = [];
         let filteredTransactions = [];
-        let minhasChavesPix = MINHAS_CHAVES_PIX;
+        let minhasChavesPix = [];
         let saldoGeral = 0;
         let igrejaSelecionada = 'todas';
 
@@ -874,6 +874,121 @@
             }
         }
 
+        // Buscar minhas chaves PIX da API do Mercado Pago
+        async function buscarMinhasChavesPix() {
+            try {
+                console.log('Buscando minhas chaves PIX da API...');
+                
+                // Tentar diferentes endpoints da API para buscar chaves PIX
+                let chavesPix = [];
+                
+                try {
+                    // Endpoint para buscar chaves PIX
+                    const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/pix/keys`);
+                    
+                    if (data && Array.isArray(data)) {
+                        chavesPix = data.map(chave => ({
+                            id: chave.id,
+                            chave: chave.key_value || chave.key,
+                            tipo: chave.key_type,
+                            status: chave.status || 'active',
+                            // Determinar igreja baseada na chave
+                            igreja: identificarIgrejaPorChave(chave.key_value || chave.key)
+                        }));
+                    }
+                } catch (apiError) {
+                    console.warn('Primeiro endpoint de chaves PIX falhou:', apiError);
+                    
+                    // Tentar endpoint alternativo
+                    try {
+                        const userData = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me`);
+                        if (userData) {
+                            // Criar chaves baseadas nas informações do usuário
+                            chavesPix = [];
+                            if (userData.email) {
+                                chavesPix.push({
+                                    id: 'email-' + userData.email,
+                                    chave: userData.email,
+                                    tipo: 'email',
+                                    status: 'active',
+                                    igreja: identificarIgrejaPorChave(userData.email)
+                                });
+                            }
+                            
+                            // Adicionar chaves fixas como fallback
+                            for (const [chave, igreja] of Object.entries(CHAVES_PIX_IGREJAS)) {
+                                chavesPix.push({
+                                    id: 'fallback-' + chave,
+                                    chave: chave,
+                                    tipo: chave.includes('@') ? 'email' : 'telefone',
+                                    status: 'active',
+                                    igreja: igreja
+                                });
+                            }
+                        }
+                    } catch (userError) {
+                        console.warn('Endpoint de usuário falhou:', userError);
+                        
+                        // Usar apenas as chaves fixas
+                        chavesPix = Object.entries(CHAVES_PIX_IGREJAS).map(([chave, igreja], index) => ({
+                            id: 'fixed-' + index,
+                            chave: chave,
+                            tipo: chave.includes('@') ? 'email' : 'telefone',
+                            status: 'active',
+                            igreja: igreja
+                        }));
+                    }
+                }
+                
+                console.log('Chaves PIX encontradas:', chavesPix);
+                minhasChavesPix = chavesPix;
+                atualizarFiltroChavesPix();
+                return chavesPix;
+
+            } catch (error) {
+                console.error('Erro ao buscar chaves PIX:', error);
+                
+                // Fallback: usar as chaves fixas
+                minhasChavesPix = Object.entries(CHAVES_PIX_IGREJAS).map(([chave, igreja], index) => ({
+                    id: 'fallback-' + index,
+                    chave: chave,
+                    tipo: chave.includes('@') ? 'email' : 'telefone',
+                    status: 'active',
+                    igreja: igreja
+                }));
+                
+                atualizarFiltroChavesPix();
+                return minhasChavesPix;
+            }
+        }
+
+        // Identificar igreja baseada na chave PIX
+        function identificarIgrejaPorChave(chave) {
+            if (!chave) return 'nao-identificada';
+            
+            // Normalizar chave para comparação
+            const chaveLimpa = chave.replace(/\D/g, '');
+            
+            // Verificar nas chaves conhecidas
+            for (const [chaveConhecida, igreja] of Object.entries(CHAVES_PIX_IGREJAS)) {
+                const chaveConhecidaLimpa = chaveConhecida.replace(/\D/g, '');
+                
+                if (chaveConhecida.includes('@')) {
+                    // Para emails, verificar correspondência exata
+                    if (chave.toLowerCase().includes(chaveConhecida.toLowerCase())) {
+                        return igreja;
+                    }
+                } else {
+                    // Para telefones, verificar se há correspondência
+                    if (chaveLimpa.includes(chaveConhecidaLimpa) || chaveConhecidaLimpa.includes(chaveLimpa)) {
+                        return igreja;
+                    }
+                }
+            }
+            
+            return 'nao-identificada';
+        }
+
         // Atualizar o select de filtro de chaves PIX
         function atualizarFiltroChavesPix() {
             console.log('Atualizando filtro de chaves Pix com:', minhasChavesPix);
@@ -911,45 +1026,31 @@
                 
                 // Verificar se corresponde a alguma das minhas chaves
                 for (const minhaChave of minhasChavesPix) {
-                    // Remover caracteres não numéricos para comparação de telefone
-                    if (minhaChave.tipo === 'telefone') {
-                        const chaveLimpa = chaveTransacao.replace(/\D/g, '');
-                        const minhaChaveLimpa = minhaChave.chave.replace(/\D/g, '');
-                        
-                        if (chaveLimpa.includes(minhaChaveLimpa) || minhaChaveLimpa.includes(chaveLimpa)) {
+                    // Para emails, verificar correspondência exata ou parcial
+                    if (minhaChave.tipo === 'email' && chaveTransacao.includes('@')) {
+                        if (chaveTransacao.toLowerCase().includes(minhaChave.chave.toLowerCase())) {
                             return minhaChave;
                         }
-                    } else if (chaveTransacao.includes(minhaChave.chave) || minhaChave.chave.includes(chaveTransacao)) {
+                    }
+                    
+                    // Para telefones, normalizar e comparar
+                    if (minhaChave.tipo === 'telefone') {
+                        const chaveTransacaoLimpa = chaveTransacao.replace(/\D/g, '');
+                        const minhaChaveLimpa = minhaChave.chave.replace(/\D/g, '');
+                        
+                        if (chaveTransacaoLimpa.includes(minhaChaveLimpa) || minhaChaveLimpa.includes(chaveTransacaoLimpa)) {
+                            return minhaChave;
+                        }
+                    }
+                    
+                    // Verificar correspondência direta
+                    if (chaveTransacao.includes(minhaChave.chave) || minhaChave.chave.includes(chaveTransacao)) {
                         return minhaChave;
                     }
                 }
             }
             
             return null;
-        }
-
-        // Identificar a igreja baseada na chave PIX usada
-        function identificarIgrejaPorChavePix(chavePix) {
-            if (!chavePix) return 'nao-identificada';
-            
-            const chaveLimpa = chavePix.replace(/\D/g, '');
-            
-            // Verificar cada uma das minhas chaves
-            for (const minhaChave of minhasChavesPix) {
-                const minhaChaveLimpa = minhaChave.chave.replace(/\D/g, '');
-                
-                if (minhaChave.tipo === 'telefone') {
-                    // Para telefones, verificar se há correspondência
-                    if (chaveLimpa.includes(minhaChaveLimpa) || minhaChaveLimpa.includes(chaveLimpa)) {
-                        return minhaChave.igreja;
-                    }
-                } else if (chavePix.includes(minhaChave.chave)) {
-                    // Para emails, verificar se há correspondência exata
-                    return minhaChave.igreja;
-                }
-            }
-            
-            return 'nao-identificada';
         }
 
         // Buscar saldo da conta
@@ -975,8 +1076,8 @@
                 loadingDiv.style.display = 'block';
                 table.style.display = 'none';
                 
-                // Atualizar filtro de chaves PIX
-                atualizarFiltroChavesPix();
+                // Buscar chaves PIX primeiro
+                await buscarMinhasChavesPix();
                 
                 // Define datas
                 const hoje = new Date();
@@ -1034,16 +1135,23 @@
                 // ID da transação
                 const idTransacao = item.id || 'N/A';
                 
-                // Chave Pix (usar email do pagador ou gerar)
+                // Chave Pix (tentar extrair de vários lugares)
                 let chavePix = 'N/A';
+                
+                // 1. Verificar se há dados do pagador
                 if (item.payer && item.payer.email) {
                     chavePix = item.payer.email;
-                } else if (item.payment_method_id === 'pix') {
-                    // Tentar extrair chave PIX dos dados adicionais
-                    if (item.point_of_interaction && item.point_of_interaction.transaction_data) {
-                        chavePix = item.point_of_interaction.transaction_data.qr_code || 
-                                   item.point_of_interaction.transaction_data.ticket_url || 
-                                   'Chave não disponível';
+                }
+                
+                // 2. Verificar dados PIX específicos
+                if (item.payment_method_id === 'pix' && item.point_of_interaction && item.point_of_interaction.transaction_data) {
+                    const txData = item.point_of_interaction.transaction_data;
+                    if (txData.qr_code) {
+                        // Tentar extrair chave do QR code
+                        const match = txData.qr_code.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|\+?(\d[\d\s\-\(\)]+)/);
+                        if (match) {
+                            chavePix = match[0];
+                        }
                     }
                 }
                 
@@ -1071,13 +1179,13 @@
                 };
                 const minhaChaveUtilizada = identificarMinhaChavePixUtilizada(transacaoParaAnalise);
                 
-                // Identificar igreja baseada na chave PIX
+                // Identificar igreja
                 let igreja = 'nao-identificada';
                 if (minhaChaveUtilizada) {
                     igreja = minhaChaveUtilizada.igreja;
                 } else {
-                    // Fallback: tentar identificar pela descrição
-                    igreja = identificarIgrejaPorChavePix(chavePix);
+                    // Fallback: tentar identificar pela chave PIX
+                    igreja = identificarIgrejaPorChave(chavePix);
                 }
 
                 // Determinar tipo de doação baseado na descrição
@@ -1423,7 +1531,7 @@
         function processarDadosPorMes(dados, ano, igrejaFiltro) {
             const meses = [
                 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Desembro'
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
             ];
             
             const resultado = {};
@@ -1451,13 +1559,13 @@
                 // Determinar tipo (entrada/saída)
                 const tipo = (transacao.status_detail === 'accredited' || transacao.operation_type === 'regular_payment') ? 'entrada' : 'saida';
                 
-                // Identificar igreja pela chave PIX
+                // Identificar igreja
                 let chavePix = '';
                 if (transacao.payer && transacao.payer.email) {
                     chavePix = transacao.payer.email;
                 }
                 
-                const igreja = identificarIgrejaPorChavePix(chavePix);
+                const igreja = identificarIgrejaPorChave(chavePix);
                 
                 // Aplicar filtro de igreja
                 if (igrejaFiltro !== 'todas' && igreja !== igrejaFiltro) {
@@ -1577,13 +1685,13 @@
         exportarDadosBtn.addEventListener('click', exportarDados);
 
         // Seleção de igreja
-        churchButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('church-btn')) {
                 churchButtons.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                igrejaSelecionada = this.getAttribute('data-church');
+                e.target.classList.add('active');
+                igrejaSelecionada = e.target.getAttribute('data-church');
                 aplicarFiltros();
-            });
+            }
         });
 
         // Filtros dinâmicos
@@ -1618,25 +1726,6 @@
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
             usernameInput.focus();
-            
-            // Adicionar botão para Verbo da Vida Estação
-            const churchSelector = document.querySelector('.church-selector');
-            const estacaoButton = document.createElement('div');
-            estacaoButton.className = 'church-btn';
-            estacaoButton.setAttribute('data-church', 'estacao');
-            estacaoButton.textContent = 'Verbo da Vida Estação';
-            churchSelector.appendChild(estacaoButton);
-            
-            // Adicionar evento ao novo botão
-            estacaoButton.addEventListener('click', function() {
-                churchButtons.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                igrejaSelecionada = this.getAttribute('data-church');
-                aplicarFiltros();
-            });
-            
-            // Atualizar a lista de botões da igreja
-            churchButtons = document.querySelectorAll('.church-btn');
         });
     </script>
 </body>
