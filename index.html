@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* ... (todo o CSS anterior permanece igual) ... */
         :root {
             --primary: #1a4b8c;
             --secondary: #6c757d;
@@ -470,7 +469,7 @@
             border-top: 1px solid var(--border);
         }
         
-        /* ADICIONEI ESTILOS PARA CONFIGURAÇÃO DE CHAVES PIX */
+        /* CHAVES PIX CONFIG CSS */
         .chaves-pix-config {
             background: white;
             border-radius: 10px;
@@ -903,17 +902,10 @@
         // Configuração
         const SUPABASE_URL = 'https://nekbbkenxcukoortusge.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5la2Jia2VueGN1a29vcnR1c2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzOTU5MDIsImV4cCI6MjA3ODk3MTkwMn0.D72914Vyz1du1ZDKoNDdwT7YI-D8WPgZe38LbBV2bfc';
-        
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         const ACCESS_TOKEN = 'APP_USR-7942402403468023-112215-a0799e629a61e1568f394d40728fed58-674529245';
         const API_BASE_URL = 'https://api.mercadopago.com';
-
-        // CHAVES PIX PADRÃO (HARDCODED) - PRIORIDADE
-        const CHAVES_PIX_INICIAIS = [
-            { chave: '83991993505', tipo: 'telefone', igreja: 'inga' },
-            { chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' }
-        ];
 
         // Elementos DOM
         const loginScreen = document.getElementById('loginScreen');
@@ -923,7 +915,6 @@
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         
-        // Elementos da aba de chaves PIX
         const chavesListaContainer = document.getElementById('chaves-lista-container');
         const novaChaveInput = document.getElementById('nova-chave');
         const novaChaveTipoSelect = document.getElementById('nova-chave-tipo');
@@ -932,7 +923,6 @@
         const buscarChavesApiBtn = document.getElementById('buscar-chaves-api');
         const apiStatusDiv = document.getElementById('api-status');
         
-        // Outros elementos
         const aplicarFiltrosBtn = document.getElementById('aplicar-filtros');
         const limparFiltrosBtn = document.getElementById('limpar-filtros');
         const atualizarDadosBtn = document.getElementById('atualizar-dados');
@@ -952,7 +942,6 @@
         const table = document.querySelector('table');
         const tbody = document.querySelector('tbody');
         const connectionStatus = document.querySelector('.connection-status');
-        
         const filteredTotalsInfo = document.querySelector('.filtered-totals-info');
         const filteredTotalsText = document.getElementById('filtered-totals-text');
         
@@ -972,23 +961,15 @@
         let saldoGeral = 0;
         let igrejaSelecionada = 'todas';
 
-        // Função de login
         function fazerLogin(usuario, senha) {
-            const usuariosValidos = {
-                'admin': 'verbo2025',
-                'financeiro': 'verbofin2025',
-                'pastor': 'verbopastor2025'
-            };
-            
+            const usuariosValidos = { 'admin': 'verbo2025', 'financeiro': 'verbofin2025', 'pastor': 'verbopastor2025' };
             return usuariosValidos[usuario] === senha;
         }
 
-        // Função para formatar valor
         function formatarValor(valor) {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
         }
 
-        // Função para obter nome da igreja
         function obterNomeIgreja(codigoIgreja) {
             switch(codigoIgreja) {
                 case 'inga': return 'Verbo da Vida Ingá';
@@ -998,19 +979,17 @@
             }
         }
 
-        // Função para salvar chaves PIX no localStorage
         function salvarChavesPixNoLocalStorage() {
             localStorage.setItem('verbo_chaves_pix', JSON.stringify(minhasChavesPix));
-            console.log('Chaves PIX salvas no localStorage:', minhasChavesPix);
         }
 
-        // Função para carregar chaves PIX do localStorage
         function carregarChavesPixDoLocalStorage() {
             const chavesSalvas = localStorage.getItem('verbo_chaves_pix');
             if (chavesSalvas) {
                 minhasChavesPix = JSON.parse(chavesSalvas);
                 
-                // Garantir que as chaves obrigatórias estejam presentes mesmo se o usuário tiver dados antigos
+                // GARANTE QUE AS CHAVES OBRIGATÓRIAS ESTEJAM NA LISTA
+                // Isso resolve o problema se o usuário já tinha dados salvos anteriormente
                 const phoneExists = minhasChavesPix.some(k => k.chave.replace(/\D/g, '').includes('83991993505'));
                 const emailExists = minhasChavesPix.some(k => k.chave.toLowerCase().includes('financeiro@verboestacao.com'));
 
@@ -1021,37 +1000,29 @@
                     minhasChavesPix.push({ chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' });
                 }
             } else {
-                // Se não houver chaves salvas, usar as iniciais
-                minhasChavesPix = [...CHAVES_PIX_INICIAIS];
+                // Se não houver nada salvo, cria as chaves padrão
+                minhasChavesPix = [
+                    { chave: '83991993505', tipo: 'telefone', igreja: 'inga' },
+                    { chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' }
+                ];
                 salvarChavesPixNoLocalStorage();
             }
             
-            // Atualizar a lista de chaves na interface
             atualizarListaChavesPix();
             atualizarFiltroChavesPix();
-            
             return minhasChavesPix;
         }
 
-        // Função para atualizar a lista de chaves na interface
         function atualizarListaChavesPix() {
             chavesListaContainer.innerHTML = '';
-            
             if (minhasChavesPix.length === 0) {
-                chavesListaContainer.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: var(--gray);">
-                        <i class="fas fa-key" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                        <p>Nenhuma chave PIX cadastrada ainda.</p>
-                        <p>Adicione suas chaves PIX para que o sistema possa identificar automaticamente as doações.</p>
-                    </div>
-                `;
+                chavesListaContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--gray);"><i class="fas fa-key" style="font-size: 2rem; margin-bottom: 10px;"></i><p>Nenhuma chave PIX cadastrada.</p></div>';
                 return;
             }
             
             minhasChavesPix.forEach((chave, index) => {
                 const chaveItem = document.createElement('div');
                 chaveItem.className = 'chave-item';
-                
                 chaveItem.innerHTML = `
                     <div class="chave-info">
                         <span class="chave-valor">${chave.chave}</span>
@@ -1059,233 +1030,114 @@
                         <span class="chave-igreja">${obterNomeIgreja(chave.igreja)}</span>
                     </div>
                     <div class="chave-actions">
-                        <button class="btn-sm btn-secondary" onclick="editarChavePix(${index})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-sm btn-danger" onclick="removerChavePix(${index})">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        <button class="btn-sm btn-secondary" onclick="editarChavePix(${index})"><i class="fas fa-edit"></i></button>
+                        <button class="btn-sm btn-danger" onclick="removerChavePix(${index})"><i class="fas fa-trash"></i></button>
                     </div>
                 `;
-                
                 chavesListaContainer.appendChild(chaveItem);
             });
         }
 
-        // Funções globais para manipular chaves PIX
         window.adicionarChavePix = function() {
             const novaChave = novaChaveInput.value.trim();
             const novoTipo = novaChaveTipoSelect.value;
             const novaigreja = novaChaveIgrejaSelect.value;
             
-            if (!novaChave) {
-                alert('Por favor, digite uma chave PIX válida.');
-                return;
-            }
+            if (!novaChave) { alert('Digite uma chave válida.'); return; }
+            if (minhasChavesPix.some(chave => chave.chave === novaChave)) { alert('Chave já cadastrada.'); return; }
             
-            // Verificar se a chave já existe
-            if (minhasChavesPix.some(chave => chave.chave === novaChave)) {
-                alert('Esta chave PIX já está cadastrada.');
-                return;
-            }
-            
-            // Adicionar nova chave
-            minhasChavesPix.push({
-                chave: novaChave,
-                tipo: novoTipo,
-                igreja: novaigreja
-            });
-            
-            // Salvar no localStorage
+            minhasChavesPix.push({ chave: novaChave, tipo: novoTipo, igreja: novaigreja });
             salvarChavesPixNoLocalStorage();
-            
-            // Atualizar interfaces
             atualizarListaChavesPix();
             atualizarFiltroChavesPix();
-            
-            // Limpar formulário
             novaChaveInput.value = '';
-            
-            // Mostrar mensagem de sucesso
-            apiStatusDiv.innerHTML = `
-                <div class="success" style="margin: 10px 0;">
-                    <i class="fas fa-check-circle"></i> Chave PIX adicionada com sucesso!
-                </div>
-            `;
+            apiStatusDiv.innerHTML = '<div class="success"><i class="fas fa-check-circle"></i> Chave adicionada!</div>';
         };
 
         window.removerChavePix = function(index) {
-            if (confirm('Tem certeza que deseja remover esta chave PIX?')) {
+            if (confirm('Remover esta chave?')) {
                 minhasChavesPix.splice(index, 1);
                 salvarChavesPixNoLocalStorage();
                 atualizarListaChavesPix();
                 atualizarFiltroChavesPix();
-                
-                apiStatusDiv.innerHTML = `
-                    <div class="success" style="margin: 10px 0;">
-                        <i class="fas fa-check-circle"></i> Chave PIX removida com sucesso!
-                    </div>
-                `;
             }
         };
 
         window.editarChavePix = function(index) {
             const chave = minhasChavesPix[index];
-            
-            // Criar modal de edição simples
-            const novaChave = prompt('Editar chave PIX:', chave.chave);
-            if (novaChave !== null) {
-                const novoTipo = prompt('Tipo da chave (telefone/email/cpf/cnpj):', chave.tipo);
+            const novaChave = prompt('Editar chave:', chave.chave);
+            if (novaChave) {
+                const novoTipo = prompt('Tipo (telefone/email/cpf):', chave.tipo);
                 const novaigreja = prompt('Igreja (inga/zona-leste/estacao):', chave.igreja);
-                
                 if (novaChave && novoTipo && novaigreja) {
-                    minhasChavesPix[index] = {
-                        chave: novaChave,
-                        tipo: novoTipo,
-                        igreja: novaigreja
-                    };
-                    
+                    minhasChavesPix[index] = { chave: novaChave, tipo: novoTipo, igreja: novaigreja };
                     salvarChavesPixNoLocalStorage();
                     atualizarListaChavesPix();
                     atualizarFiltroChavesPix();
-                    
-                    apiStatusDiv.innerHTML = `
-                        <div class="success" style="margin: 10px 0;">
-                            <i class="fas fa-check-circle"></i> Chave PIX atualizada com sucesso!
-                        </div>
-                    `;
                 }
             }
         };
 
-        // Função para buscar chaves PIX da API do Mercado Pago
         async function buscarChavesPixDaAPI() {
+            // A API pode não retornar chaves se o token não tiver escopo ou se as chaves forem de App
+            // Mas como já "chumbamos" as chaves principais na carga inicial, essa função é apenas complementar
             try {
-                apiStatusDiv.innerHTML = `
-                    <div style="text-align: center; padding: 10px;">
-                        <i class="fas fa-spinner fa-spin"></i> Buscando chaves PIX da API do Mercado Pago...
-                    </div>
-                `;
-                
-                // Tentar diferentes endpoints da API
+                apiStatusDiv.innerHTML = '<div><i class="fas fa-spinner fa-spin"></i> Buscando...</div>';
                 let chavesEncontradas = [];
                 
-                // Endpoint 1: PIX Keys (mais comum)
                 try {
                     const response = await fetch(`${API_BASE_URL}/v1/pix/keys`, {
                         method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        }
+                        headers: { 'Authorization': `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'application/json' }
                     });
-                    
                     if (response.ok) {
                         const data = await response.json();
                         if (Array.isArray(data)) {
                             data.forEach(chave => {
-                                if (chave.status === 'active' || chave.status === 'approved') {
-                                    chavesEncontradas.push({
-                                        chave: chave.key || chave.key_value || chave.value || chave.id,
-                                        tipo: chave.key_type || 'unknown',
-                                        igreja: 'estacao' // Padrão, será ajustado se já existir
-                                    });
+                                if (chave.status === 'active') {
+                                    chavesEncontradas.push({ chave: chave.key || chave.id, tipo: chave.key_type || 'unknown', igreja: 'estacao' });
                                 }
                             });
                         }
                     }
-                } catch (error) {
-                    console.log('Endpoint /v1/pix/keys falhou:', error);
-                }
-                
-                // Endpoint 2: User info (pode ter email como chave)
-                try {
-                    const response = await fetch(`${API_BASE_URL}/v1/users/me`, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const userData = await response.json();
-                        if (userData.email) {
-                            // Verificar se o email já está na lista
-                            if (!chavesEncontradas.some(c => c.chave === userData.email)) {
-                                chavesEncontradas.push({
-                                    chave: userData.email,
-                                    tipo: 'email',
-                                    igreja: 'estacao'
-                                });
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.log('Endpoint /v1/users/me falhou:', error);
-                }
-                
-                // Mesclar com chaves existentes
+                } catch (e) { console.log('Erro API chaves:', e); }
+
                 if (chavesEncontradas.length > 0) {
-                    // Para cada chave encontrada, verificar se já existe
-                    chavesEncontradas.forEach(novaChave => {
-                        const chaveExistente = minhasChavesPix.find(c => c.chave === novaChave.chave);
-                        if (!chaveExistente) {
-                            minhasChavesPix.push(novaChave);
-                        }
+                    chavesEncontradas.forEach(nc => {
+                        if (!minhasChavesPix.some(c => c.chave === nc.chave)) minhasChavesPix.push(nc);
                     });
-                    
                     salvarChavesPixNoLocalStorage();
                     atualizarListaChavesPix();
-                    atualizarFiltroChavesPix();
-                    
-                    apiStatusDiv.innerHTML = `
-                        <div class="success" style="margin: 10px 0;">
-                            <i class="fas fa-check-circle"></i> ${chavesEncontradas.length} chave(s) PIX encontrada(s) na API e adicionada(s) à lista!
-                        </div>
-                    `;
+                    apiStatusDiv.innerHTML = `<div class="success">${chavesEncontradas.length} chaves encontradas.</div>`;
                 } else {
-                    apiStatusDiv.innerHTML = `
-                        <div class="error" style="margin: 10px 0;">
-                            <i class="fas fa-exclamation-triangle"></i> Nenhuma chave PIX encontrada na API do Mercado Pago.
-                            <p style="font-size: 0.9rem; margin-top: 5px;">Você pode adicionar manualmente suas chaves PIX acima.</p>
-                        </div>
-                    `;
+                    apiStatusDiv.innerHTML = '<div class="error">Nenhuma chave nova encontrada na API. As chaves manuais serão usadas.</div>';
                 }
-                
             } catch (error) {
-                console.error('Erro ao buscar chaves da API:', error);
-                apiStatusDiv.innerHTML = `
-                    <div class="error" style="margin: 10px 0;">
-                        <i class="fas fa-exclamation-triangle"></i> Erro ao conectar com a API do Mercado Pago: ${error.message}
-                        <p style="font-size: 0.9rem; margin-top: 5px;">Verifique seu token de acesso e tente novamente.</p>
-                    </div>
-                `;
+                apiStatusDiv.innerHTML = `<div class="error">Erro ao buscar: ${error.message}</div>`;
             }
         }
 
-        // Atualizar o select de filtro de chaves PIX
         function atualizarFiltroChavesPix() {
             chavePixSelect.innerHTML = '<option value="">Todas as Chaves</option>';
-            
-            if (minhasChavesPix && minhasChavesPix.length > 0) {
-                minhasChavesPix.forEach(chave => {
-                    const option = document.createElement('option');
-                    option.value = chave.chave;
-                    option.textContent = `${chave.chave} (${chave.tipo}) - ${obterNomeIgreja(chave.igreja)}`;
-                    chavePixSelect.appendChild(option);
-                });
-            }
+            minhasChavesPix.forEach(chave => {
+                const option = document.createElement('option');
+                option.value = chave.chave;
+                option.textContent = `${chave.chave} - ${obterNomeIgreja(chave.igreja)}`;
+                chavePixSelect.appendChild(option);
+            });
         }
 
-        // Identificar igreja baseada na chave PIX (Prioridade Absoluta)
+        // --- LÓGICA DE CLASSIFICAÇÃO CORRIGIDA ---
+
         function identificarIgrejaPorChavePix(chave) {
             if (!chave) return 'estacao';
             
-            const chaveLimpa = chave.replace(/\D/g, '');
-            const chaveLower = chave.toLowerCase();
+            // LIMPEZA DA CHAVE (Remove +55, parenteses, traços e espaços)
+            // Isso garante que (83) 99199-3505 seja igual a 83991993505
+            const chaveLimpa = chave.toString().replace(/\D/g, ''); 
+            const chaveLower = chave.toString().toLowerCase();
 
-            // REGRAS HARDCODED DE PRIORIDADE MÁXIMA
+            // 1. VERIFICAÇÃO HARDCODED (PRIORIDADE MÁXIMA)
             if (chaveLimpa.includes('83991993505')) {
                 return 'inga';
             }
@@ -1293,358 +1145,219 @@
                 return 'estacao';
             }
             
-            // Busca nas chaves cadastradas
+            // 2. Verifica na lista de chaves cadastradas
             for (const minhaChave of minhasChavesPix) {
-                if (minhaChave.tipo === 'email' && chaveLower.includes('@')) {
-                    if (chaveLower.includes(minhaChave.chave.toLowerCase())) {
-                        return minhaChave.igreja;
-                    }
-                } else if (minhaChave.tipo === 'telefone' || minhaChave.tipo === 'phone') {
-                    const minhaChaveLimpa = minhaChave.chave.replace(/\D/g, '');
-                    if (chaveLimpa.includes(minhaChaveLimpa) && minhaChaveLimpa.length > 5) {
-                        return minhaChave.igreja;
-                    }
-                } else {
-                    if (chave.includes(minhaChave.chave)) {
-                        return minhaChave.igreja;
-                    }
+                const minhaLimpa = minhaChave.chave.replace(/\D/g, '');
+                
+                // Se for telefone
+                if ((minhaChave.tipo === 'telefone' || minhaChave.tipo === 'phone') && minhaLimpa.length > 8) {
+                    if (chaveLimpa.includes(minhaLimpa)) return minhaChave.igreja;
+                }
+                // Se for email
+                else if (minhaChave.tipo === 'email') {
+                    if (chaveLower.includes(minhaChave.chave.toLowerCase())) return minhaChave.igreja;
+                }
+                // Outros (CPF/CNPJ/Aleatória)
+                else {
+                    if (chave.includes(minhaChave.chave)) return minhaChave.igreja;
                 }
             }
             
             return 'estacao';
         }
 
-        // Identificar qual chave Pix foi utilizada na transação
         function identificarMinhaChavePixUtilizada(transacao) {
+            // Verifica se é uma transação PIX de entrada
             if (transacao.tipo === 'credit' && transacao.metodoPagamento === 'PIX') {
-                const chaveTransacao = transacao.chavePix || '';
-                const chaveTransacaoLimpa = chaveTransacao.replace(/\D/g, '');
-                const chaveTransacaoLower = chaveTransacao.toLowerCase();
+                const chaveTx = transacao.chavePix || '';
+                const chaveTxLimpa = chaveTx.replace(/\D/g, '');
+                const chaveTxLower = chaveTx.toLowerCase();
 
-                // REGRAS HARDCODED
-                if (chaveTransacaoLimpa.includes('83991993505')) {
+                // 1. HARDCODED (PRIORIDADE)
+                if (chaveTxLimpa.includes('83991993505')) {
                     return { chave: '83991993505', tipo: 'telefone', igreja: 'inga' };
                 }
-                if (chaveTransacaoLower.includes('financeiro@verboestacao.com')) {
+                if (chaveTxLower.includes('financeiro@verboestacao.com')) {
                     return { chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' };
                 }
                 
+                // 2. Busca na lista
                 for (const minhaChave of minhasChavesPix) {
-                    if (minhaChave.tipo === 'email' && chaveTransacaoLower.includes('@')) {
-                        if (chaveTransacaoLower.includes(minhaChave.chave.toLowerCase())) {
-                            return minhaChave;
-                        }
-                    } else if (minhaChave.tipo === 'telefone' || minhaChave.tipo === 'phone') {
-                        const minhaChaveLimpa = minhaChave.chave.replace(/\D/g, '');
-                        if (chaveTransacaoLimpa.includes(minhaChaveLimpa) && minhaChaveLimpa.length > 5) {
-                            return minhaChave;
-                        }
-                    } else {
-                        if (chaveTransacao.includes(minhaChave.chave)) {
-                            return minhaChave;
-                        }
+                    const minhaLimpa = minhaChave.chave.replace(/\D/g, '');
+                    
+                    if ((minhaChave.tipo === 'telefone' || minhaChave.tipo === 'phone') && minhaLimpa.length > 8) {
+                        if (chaveTxLimpa.includes(minhaLimpa)) return minhaChave;
+                    } 
+                    else if (minhaChave.tipo === 'email') {
+                        if (chaveTxLower.includes(minhaChave.chave.toLowerCase())) return minhaChave;
+                    }
+                    else {
+                        if (chaveTx.includes(minhaChave.chave)) return minhaChave;
                     }
                 }
             }
-            
             return null;
         }
 
-        // Função Genérica de Requisição com Tratamento de Erro Robusto
+        // --- REQUISIÇÕES E PROCESSAMENTO ---
+
         async function fazerRequisicaoAPI(url) {
             try {
                 const response = await fetch(url, {
                     method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Authorization': `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'application/json' }
                 });
-
-                if (!response.ok) {
-                    if (response.status === 401) throw new Error("Token inválido ou expirado.");
-                    if (response.status === 403) throw new Error("Permissão negada (Escopo insuficiente).");
-                    throw new Error(`Erro HTTP: ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
                 return await response.json();
-            } catch (error) {
-                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-                    throw new Error("Bloqueio de CORS. Use uma extensão 'Allow CORS' no navegador.");
-                }
-                throw error;
-            }
+            } catch (error) { throw error; }
         }
 
-        // Buscar saldo da conta
         async function buscarSaldo() {
             try {
-                try {
-                    const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me/mercadopago_account/balance`);
-                    return data.total_amount || 0;
-                } catch (e) {
-                    const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/balance`);
-                    return data.available_balance ? data.available_balance.amount : 0;
-                }
-            } catch (error) {
-                console.error('Erro saldo:', error);
-                return 0;
-            }
+                const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me/mercadopago_account/balance`);
+                return data.total_amount || 0;
+            } catch (e) { return 0; }
         }
 
-        // Buscar movimentos/pagamentos
         async function buscarMovimentos() {
             try {
                 limparMensagens();
                 loadingDiv.style.display = 'block';
                 table.style.display = 'none';
                 
-                // Carregar chaves PIX
+                // Carrega (ou cria) as chaves antes de processar
                 await carregarChavesPixDoLocalStorage();
                 
-                // Define datas
                 const hoje = new Date();
-                const trintaDiasAtras = new Date();
-                trintaDiasAtras.setDate(hoje.getDate() - 30);
-                
-                if(!dataInicioInput.value) dataInicioInput.value = trintaDiasAtras.toISOString().split('T')[0];
+                const trintaDias = new Date(); trintaDias.setDate(hoje.getDate() - 30);
+                if(!dataInicioInput.value) dataInicioInput.value = trintaDias.toISOString().split('T')[0];
                 if(!dataFimInput.value) dataFimInput.value = hoje.toISOString().split('T')[0];
 
-                const dtInicio = dataInicioInput.value;
-                const dtFim = dataFimInput.value;
-
-                // Atualiza Saldo
                 saldoGeral = await buscarSaldo();
                 document.querySelector('.card.total .value').textContent = formatarValor(saldoGeral);
-                document.querySelector('.card.total p').textContent = 'Saldo Disponível';
 
-                // Busca Pagamentos
-                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=500&range=date_created&begin_date=${dtInicio}T00:00:00Z&end_date=${dtFim}T23:59:59Z`;
+                const url = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=500&range=date_created&begin_date=${dataInicioInput.value}T00:00:00Z&end_date=${dataFimInput.value}T23:59:59Z`;
+                const dados = await fazerRequisicaoAPI(url);
                 
-                const dados = await fazerRequisicaoAPI(urlPagamentos);
-                
-                if (dados.results) {
-                    processarDadosReais(dados.results);
-                } else {
-                    throw new Error('Lista de transações vazia ou formato inesperado.');
-                }
+                if (dados.results) processarDadosReais(dados.results);
+                else throw new Error('Sem transações.');
                 
             } catch (error) {
-                console.error('Erro geral:', error);
-                mostrarErro(`Erro: ${error.message}`);
-                loadingDiv.style.display = 'none';
+                mostrarErro(error.message);
             }
         }
 
-        // Processar dados reais da API
         function processarDadosReais(dados) {
             allTransactions = dados.map(item => {
                 const valor = item.transaction_amount || 0;
-                
                 let situacao = 'Pendente';
                 if (item.status === 'approved') situacao = 'Aprovado';
                 else if (item.status === 'cancelled') situacao = 'Cancelado';
-                else if (item.status === 'rejected') situacao = 'Rejeitado';
                 
                 const dataHora = new Date(item.date_created);
-                const dataFormatada = dataHora.toLocaleDateString('pt-BR');
-                const horaFormatada = dataHora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                const desc = item.description || 'Sem descrição';
                 
-                const descricao = item.description || 'Sem descrição';
-                const idTransacao = item.id || 'N/A';
-                
+                // Tenta extrair a chave do QR Code (metadata)
                 let chavePix = '';
-                
-                // Tenta pegar do QR Code (chave destinatária)
-                if (item.payment_method_id === 'pix' && item.point_of_interaction && item.point_of_interaction.transaction_data) {
-                    const txData = item.point_of_interaction.transaction_data;
-                    if (txData.qr_code) {
-                        const match = txData.qr_code.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|\+?(\d[\d\s\-\(\)]+)/);
-                        if (match) {
-                            chavePix = match[0];
-                        }
-                    }
+                if (item.point_of_interaction?.transaction_data?.qr_code) {
+                    const match = item.point_of_interaction.transaction_data.qr_code.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|\+?(\d[\d\s\-\(\)]+)/);
+                    if (match) chavePix = match[0];
                 }
-                
-                // Se não achou no QR Code, e é entrada PIX, tenta outras fontes ou mantém vazio
-                // Nota: item.payer.email é quem pagou, não quem recebeu.
-                
-                let metodoPagamento = 'Outro';
-                if (item.payment_method_id) {
-                    if (item.payment_method_id === 'pix') metodoPagamento = 'PIX';
-                    else if (item.payment_method_id === 'account_money') metodoPagamento = 'Saldo Mercado Pago';
-                    else if (item.payment_method_id.includes('card') || 
-                             item.payment_method_id === 'master' || 
-                             item.payment_method_id === 'visa') {
-                        metodoPagamento = 'Cartão';
-                    }
-                    else metodoPagamento = item.payment_method_id;
-                }
+
+                let metodo = 'Outro';
+                if (item.payment_method_id === 'pix') metodo = 'PIX';
+                else if (item.payment_method_id.includes('card')) metodo = 'Cartão';
                 
                 const tipo = (item.status_detail === 'accredited' || item.operation_type === 'regular_payment') ? 'credit' : 'debit';
                 
-                const transacaoParaAnalise = { 
-                    tipo: tipo, 
-                    metodoPagamento: metodoPagamento,
-                    chavePix: chavePix
-                };
-                
-                const minhaChaveUtilizada = identificarMinhaChavePixUtilizada(transacaoParaAnalise);
+                // AQUI A MÁGICA ACONTECE: Classificação baseada nas funções corrigidas acima
+                const transacaoObj = { tipo: tipo, metodoPagamento: metodo, chavePix: chavePix };
+                const minhaChave = identificarMinhaChavePixUtilizada(transacaoObj);
                 
                 let igreja = 'estacao';
-                if (minhaChaveUtilizada) {
-                    igreja = minhaChaveUtilizada.igreja;
-                } else {
-                    igreja = identificarIgrejaPorChavePix(chavePix);
-                }
+                if (minhaChave) igreja = minhaChave.igreja;
+                else igreja = identificarIgrejaPorChavePix(chavePix); // Fallback
 
                 let tipoDoacao = 'outro';
-                if (descricao.toLowerCase().includes('dízimo') || descricao.toLowerCase().includes('dizimo')) {
-                    tipoDoacao = 'dizimo';
-                } else if (descricao.toLowerCase().includes('oferta')) {
-                    tipoDoacao = 'oferta';
-                }
+                if (desc.toLowerCase().includes('dízimo') || desc.toLowerCase().includes('dizimo')) tipoDoacao = 'dizimo';
+                else if (desc.toLowerCase().includes('oferta')) tipoDoacao = 'oferta';
                 
-                let doadorNome = 'Doador não identificado';
-                if (item.payer) {
-                    if (item.payer.first_name) {
-                        doadorNome = item.payer.first_name;
-                        if (item.payer.last_name) {
-                            doadorNome += ' ' + item.payer.last_name;
-                        }
-                    } else if (item.payer.email) {
-                        doadorNome = item.payer.email.split('@')[0];
-                    }
-                }
+                let doador = 'Anônimo';
+                if (item.payer && item.payer.email) doador = item.payer.email.split('@')[0];
 
                 return {
                     id: item.id,
                     situacao: situacao,
                     valor: valor,
-                    dataHora: `${dataFormatada} - ${horaFormatada}`,
-                    descricao: descricao,
-                    doador: doadorNome,
+                    dataHora: `${dataHora.toLocaleDateString('pt-BR')} - ${dataHora.toLocaleTimeString('pt-BR')}`,
+                    descricao: desc,
+                    doador: doador,
                     tipoDoacao: tipoDoacao,
                     igreja: igreja,
-                    idTransacao: idTransacao,
+                    idTransacao: item.id,
                     chavePix: chavePix,
                     tipo: tipo,
                     status: item.status,
-                    metodoPagamento: metodoPagamento,
-                    minhaChaveUtilizada: minhaChaveUtilizada,
-                    observacoes: item.description || '',
-                    chavePixUsada: minhaChaveUtilizada ? minhaChaveUtilizada.chave : (chavePix || 'Chave não identificada')
+                    metodoPagamento: metodo,
+                    chavePixUsada: minhaChave ? minhaChave.chave : (chavePix || 'N/A'),
+                    observacoes: desc
                 };
             });
 
-            connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado - Dados Reais Carregados</span>';
+            connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado</span>';
             connectionStatus.className = 'connection-status status-connected';
-            
             aplicarFiltros();
-            atualizarContadores();
             loadingDiv.style.display = 'none';
             table.style.display = 'table';
         }
 
+        // Funções de UI (Filtros, Renderização, Exportação)
         function atualizarContadores() {
-            // Conta entradas, saídas e total de transações
-            const totalTransacoes = filteredTransactions.length;
+            const entradas = filteredTransactions.filter(t => t.tipo === 'credit' && t.situacao === 'Aprovado').reduce((acc, t) => acc + t.valor, 0);
+            const saidas = filteredTransactions.filter(t => t.tipo === 'debit' && t.situacao !== 'Cancelado').reduce((acc, t) => acc + t.valor, 0);
             
-            // Soma entradas e saídas
-            const totalEntradas = filteredTransactions
-                .filter(t => t.tipo === 'credit' && t.situacao === 'Aprovado')
-                .reduce((acc, t) => acc + t.valor, 0);
-                
-            const totalSaidas = filteredTransactions
-                .filter(t => t.tipo === 'debit' && t.situacao !== 'Cancelado' && t.situacao !== 'Rejeitado')
-                .reduce((acc, t) => acc + t.valor, 0);
+            document.querySelector('.card.entrada .value').textContent = formatarValor(entradas);
+            document.querySelector('.card.saida .value').textContent = formatarValor(saidas);
             
-            // Atualiza os cards
-            document.querySelector('.card.entrada .value').textContent = formatarValor(totalEntradas);
-            document.querySelector('.card.saida .value').textContent = formatarValor(totalSaidas);
-            
-            // Se estamos filtrando, mostrar saldo calculado do período/filtro, senão mostra saldo da conta
-            const filtrosAtivos = verificarFiltrosAtivos();
-            
-            if (filtrosAtivos) {
-                document.querySelector('.card.total .value').textContent = formatarValor(totalEntradas - totalSaidas);
+            if (filteredTransactions.length !== allTransactions.length) {
+                document.querySelector('.card.total .value').textContent = formatarValor(entradas - saidas);
                 document.querySelector('.card.total p').textContent = 'Resultado do Filtro';
                 filteredTotalsInfo.style.display = 'flex';
-                filteredTotalsText.textContent = `Totais calculados com base nos filtros (${totalTransacoes} registros)`;
             } else {
                 document.querySelector('.card.total .value').textContent = formatarValor(saldoGeral);
                 document.querySelector('.card.total p').textContent = 'Saldo Disponível';
                 filteredTotalsInfo.style.display = 'none';
             }
-            
-            transactionsCount.textContent = `${totalTransacoes} transações`;
-        }
-        
-        function verificarFiltrosAtivos() {
-            return (
-                tipoSelect.value !== '' || 
-                doadorInput.value !== '' ||
-                tipoDoacaoSelect.value !== '' ||
-                valorInput.value !== '' ||
-                statusSelect.value !== '' ||
-                metodoPagamentoSelect.value !== '' ||
-                igrejaSelect.value !== '' ||
-                igrejaSelecionada !== 'todas' ||
-                chavePixSelect.value !== ''
-            );
+            transactionsCount.textContent = `${filteredTransactions.length} transações`;
         }
 
         function renderizarTransacoes() {
             tbody.innerHTML = '';
-            
             if (filteredTransactions.length === 0) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = '<td colspan="8" style="text-align: center; padding: 30px;">Nenhuma doação encontrada com os filtros atuais.</td>';
-                tbody.appendChild(tr);
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px;">Nada encontrado.</td></tr>';
                 return;
             }
-            
             filteredTransactions.forEach(t => {
                 const tr = document.createElement('tr');
-                
-                // Classe para valor (verde para entrada, vermelho para saída)
+                const badgeClass = t.situacao === 'Aprovado' ? 'badge-success' : (t.situacao === 'Cancelado' ? 'badge-danger' : 'badge-info');
                 const valorClass = t.tipo === 'credit' ? 'text-success' : 'text-danger';
-                const valorSinal = t.tipo === 'credit' ? '+' : '-';
-                
-                // Badge de situação
-                let badgeClass = 'badge-info';
-                if (t.situacao === 'Aprovado') badgeClass = 'badge-success';
-                else if (t.situacao === 'Cancelado' || t.situacao === 'Rejeitado') badgeClass = 'badge-danger';
-                
-                // Badge de Igreja
-                let igrejaBadge = '';
-                if (t.igreja === 'inga') igrejaBadge = '<span class="chave-igreja">Ingá</span>';
-                else if (t.igreja === 'zona-leste') igrejaBadge = '<span class="chave-igreja">Zona Leste</span>';
-                else if (t.igreja === 'estacao') igrejaBadge = '<span class="chave-igreja">Estação</span>';
-                
-                // Informação de Chave Pix
-                let chaveInfo = '-';
-                if (t.metodoPagamento === 'PIX') {
-                    chaveInfo = `<small style="color:var(--secondary)">${t.chavePixUsada}</small>`;
-                }
+                const sinal = t.tipo === 'credit' ? '+' : '-';
                 
                 tr.innerHTML = `
                     <td><span class="badge ${badgeClass}">${t.situacao}</span></td>
-                    <td class="${valorClass}" style="font-weight: 600;">${valorSinal} ${formatarValor(t.valor)}</td>
+                    <td style="color: ${t.tipo === 'credit' ? '#28a745' : '#dc3545'}; font-weight: 600;">${sinal} ${formatarValor(t.valor)}</td>
                     <td>${t.dataHora}</td>
                     <td>${t.doador}</td>
                     <td>${obterNomeIgreja(t.igreja)}</td>
                     <td>${t.metodoPagamento}</td>
-                    <td>${chaveInfo}</td>
+                    <td><small>${t.chavePixUsada}</small></td>
                     <td>${t.observacoes}</td>
                 `;
-                
                 tbody.appendChild(tr);
             });
         }
 
         function aplicarFiltros() {
-            // Pega valores dos filtros
             const tipo = tipoSelect.value;
             const doador = doadorInput.value.toLowerCase();
             const tipoDoacao = tipoDoacaoSelect.value;
@@ -1655,10 +1368,7 @@
             const chaveFiltro = chavePixSelect.value;
             
             filteredTransactions = allTransactions.filter(t => {
-                // Filtro de Igreja (Botões Superiores)
                 if (igrejaSelecionada !== 'todas' && t.igreja !== igrejaSelecionada) return false;
-                
-                // Filtros do formulário
                 if (tipo && t.tipo !== tipo) return false;
                 if (doador && !t.doador.toLowerCase().includes(doador)) return false;
                 if (tipoDoacao && t.tipoDoacao !== tipoDoacao) return false;
@@ -1666,84 +1376,36 @@
                 if (status && t.status !== status) return false;
                 if (metodo && t.metodoPagamento !== metodo) return false;
                 if (igrejaFiltro && t.igreja !== igrejaFiltro) return false;
-                
-                // Filtro de Chave PIX
-                if (chaveFiltro) {
-                    // Verifica se a chave usada na transação contém o valor selecionado
-                    if (!t.chavePixUsada || !t.chavePixUsada.includes(chaveFiltro)) return false;
-                }
-                
+                if (chaveFiltro && (!t.chavePixUsada || !t.chavePixUsada.includes(chaveFiltro))) return false;
                 return true;
             });
-            
             renderizarTransacoes();
             atualizarContadores();
         }
 
         function limparFiltros() {
-            tipoSelect.value = '';
-            doadorInput.value = '';
-            tipoDoacaoSelect.value = '';
-            valorInput.value = '';
-            statusSelect.value = '';
-            metodoPagamentoSelect.value = '';
-            igrejaSelect.value = '';
-            chavePixSelect.value = '';
-            
-            // Não limpamos as datas nem a igreja selecionada no topo
+            tipoSelect.value = ''; doadorInput.value = ''; tipoDoacaoSelect.value = '';
+            valorInput.value = ''; statusSelect.value = ''; metodoPagamentoSelect.value = '';
+            igrejaSelect.value = ''; chavePixSelect.value = '';
             aplicarFiltros();
         }
-        
+
         function exportarDados() {
-            if (filteredTransactions.length === 0) {
-                alert("Não há dados para exportar.");
-                return;
-            }
-            
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "ID;Data;Hora;Tipo;Valor;Situação;Doador;Igreja;Método;Chave PIX;Observação\n";
-            
+            if (filteredTransactions.length === 0) return alert('Sem dados.');
+            let csv = "ID;Data;Valor;Tipo;Igreja;Chave\n";
             filteredTransactions.forEach(t => {
-                const dataSplit = t.dataHora.split(' - ');
-                const row = [
-                    t.idTransacao,
-                    dataSplit[0],
-                    dataSplit[1],
-                    t.tipo === 'credit' ? 'Entrada' : 'Saída',
-                    t.valor.toString().replace('.', ','),
-                    t.situacao,
-                    t.doador,
-                    obterNomeIgreja(t.igreja),
-                    t.metodoPagamento,
-                    t.chavePixUsada,
-                    t.observacoes
-                ].join(";");
-                csvContent += row + "\n";
+                csv += `${t.idTransacao};${t.dataHora};${t.valor};${t.tipo};${t.igreja};${t.chavePixUsada}\n`;
             });
-            
-            const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `dizimos_ofertas_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
+            link.href = encodeURI("data:text/csv;charset=utf-8," + csv);
+            link.download = "relatorio.csv";
             link.click();
-            document.body.removeChild(link);
         }
 
-        function limparMensagens() {
-            connectionStatus.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i><span>Sincronizando...</span>';
-            connectionStatus.className = 'connection-status';
-            loginError.style.display = 'none';
-        }
+        function limparMensagens() { connectionStatus.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Sincronizando...'; loginError.style.display = 'none'; }
+        function mostrarErro(msg) { connectionStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${msg}`; connectionStatus.className = 'connection-status status-disconnected'; loadingDiv.style.display = 'none'; }
 
-        function mostrarErro(mensagem) {
-            connectionStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>${mensagem}</span>`;
-            connectionStatus.className = 'connection-status status-disconnected';
-            loadingDiv.style.display = 'none';
-        }
-        
-        // --- FUNÇÕES PARA O HISTÓRICO MENSAL ---
-        
+        // --- HISTÓRICO MENSAL COMPLETO ---
         async function carregarHistoricoMensal() {
             const ano = anoFiltroSelect.value;
             const igreja = igrejaFiltroSelect.value;
@@ -1757,8 +1419,6 @@
                 // Definir período de busca: todo o ano selecionado
                 const dtInicio = `${ano}-01-01`;
                 const dtFim = `${ano}-12-31`;
-                
-                // URL de busca (busca ampliada)
                 const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=1000&range=date_created&begin_date=${dtInicio}T00:00:00Z&end_date=${dtFim}T23:59:59Z`;
                 
                 const dados = await fazerRequisicaoAPI(urlPagamentos);
@@ -1778,34 +1438,23 @@
         }
         
         function processarDadosPorMes(transacoes, igrejaFiltro) {
-            // Inicializar array com 12 meses zerados
             const dadosMeses = Array(12).fill(0).map(() => ({ entradas: 0, saidas: 0 }));
             
             transacoes.forEach(t => {
-                // Filtrar por igreja se necessário
-                let igrejaTransacao = 'estacao'; // Default
-                
-                // Tentar identificar igreja (usando lógica simplificada)
                 let chavePix = '';
                 if (t.payment_method_id === 'pix' && t.point_of_interaction?.transaction_data?.qr_code) {
                     const match = t.point_of_interaction.transaction_data.qr_code.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|\+?(\d[\d\s\-\(\)]+)/);
                     if (match) chavePix = match[0];
                 }
                 
-                igrejaTransacao = identificarIgrejaPorChavePix(chavePix);
-                
-                // Se filtro não for 'todas' e igreja não bater, pula
+                const igrejaTransacao = identificarIgrejaPorChavePix(chavePix);
                 if (igrejaFiltro !== 'todas' && igrejaTransacao !== igrejaFiltro) return;
-                
-                // Só processar aprovados
                 if (t.status !== 'approved') return;
                 
                 const data = new Date(t.date_created);
-                const mesIndex = data.getMonth(); // 0 a 11
+                const mesIndex = data.getMonth();
                 const valor = t.transaction_amount || 0;
                 
-                // Verificar se é entrada ou saída
-                // Simplificação: regular_payment e accredited são entradas
                 if (t.status_detail === 'accredited' || t.operation_type === 'regular_payment') {
                     dadosMeses[mesIndex].entradas += valor;
                 } else {
@@ -1822,15 +1471,12 @@
         function atualizarTabelaHistorico(dadosMeses) {
             const tbodyHist = tabelaHistorico.querySelector('tbody');
             tbodyHist.innerHTML = '';
-            
             const nomesMeses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-            
             let acumulado = 0;
             
             dadosMeses.forEach((dados, index) => {
                 const saldoMes = dados.entradas - dados.saidas;
                 acumulado += saldoMes;
-                
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${nomesMeses[index]}</strong></td>
@@ -1845,20 +1491,13 @@
         
         function atualizarGrafico(dadosMeses) {
             graficoBarras.innerHTML = '';
-            
-            // Encontrar o maior valor para escala
             let maxValor = 0;
-            dadosMeses.forEach(d => {
-                if (d.entradas > maxValor) maxValor = d.entradas;
-            });
-            
-            if (maxValor === 0) maxValor = 100; // Evitar divisão por zero
-            
+            dadosMeses.forEach(d => { if (d.entradas > maxValor) maxValor = d.entradas; });
+            if (maxValor === 0) maxValor = 100;
             const mesesSiglas = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
             
             dadosMeses.forEach((dados, index) => {
                 const alturaPercent = (dados.entradas / maxValor) * 100;
-                // Altura mínima visual de 2px
                 const alturaReal = Math.max(alturaPercent, 1);
                 
                 const barraContainer = document.createElement('div');
@@ -1869,16 +1508,13 @@
                 barraContainer.style.justifyContent = 'flex-end';
                 barraContainer.style.width = '7%';
                 
-                // Barra
                 const barra = document.createElement('div');
                 barra.style.width = '100%';
-                barra.style.height = dados.entradas > 0 ? `${alturaReal * 0.8}%` : '2px'; // 80% da altura do container
+                barra.style.height = dados.entradas > 0 ? `${alturaReal * 0.8}%` : '2px';
                 barra.style.backgroundColor = dados.entradas > 0 ? 'var(--primary)' : '#e9ecef';
                 barra.style.borderRadius = '3px 3px 0 0';
-                barra.style.transition = 'height 1s';
                 barra.title = `Entradas: ${formatarValor(dados.entradas)}`;
                 
-                // Label
                 const label = document.createElement('div');
                 label.textContent = mesesSiglas[index];
                 label.style.fontSize = '0.7rem';
@@ -1887,30 +1523,12 @@
                 
                 barraContainer.appendChild(barra);
                 barraContainer.appendChild(label);
-                
                 graficoBarras.appendChild(barraContainer);
             });
         }
 
-        // Event listeners
-        loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const usuario = usernameInput.value.trim();
-            const senha = passwordInput.value;
-            
-            if (fazerLogin(usuario, senha)) {
-                loginError.style.display = 'none';
-                loginScreen.style.display = 'none';
-                mainSystem.style.display = 'block';
-                buscarMovimentos();
-            } else {
-                loginError.style.display = 'block';
-                passwordInput.value = '';
-                passwordInput.focus();
-            }
-        });
-
+        // Event Listeners
+        loginForm.addEventListener('submit', (e) => { e.preventDefault(); if(fazerLogin(usernameInput.value, passwordInput.value)) { loginScreen.style.display='none'; mainSystem.style.display='block'; buscarMovimentos(); } else loginError.style.display='block'; });
         aplicarFiltrosBtn.addEventListener('click', aplicarFiltros);
         limparFiltrosBtn.addEventListener('click', limparFiltros);
         atualizarDadosBtn.addEventListener('click', buscarMovimentos);
@@ -1918,14 +1536,9 @@
         adicionarChaveBtn.addEventListener('click', window.adicionarChavePix);
         buscarChavesApiBtn.addEventListener('click', buscarChavesPixDaAPI);
         aplicarFiltroHistoricoBtn.addEventListener('click', carregarHistoricoMensal);
+        novaChaveInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.adicionarChavePix(); });
         
-        novaChaveInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                window.adicionarChavePix();
-            }
-        });
-
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', (e) => {
             if (e.target.classList.contains('church-btn')) {
                 document.querySelectorAll('.church-btn').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
@@ -1933,14 +1546,10 @@
                 aplicarFiltros();
             }
         });
-
+        
+        // Listeners de filtro
+        [doadorInput, tipoSelect, tipoDoacaoSelect, statusSelect, metodoPagamentoSelect, igrejaSelect, chavePixSelect].forEach(el => el.addEventListener('change', aplicarFiltros));
         doadorInput.addEventListener('input', aplicarFiltros);
-        tipoSelect.addEventListener('change', aplicarFiltros);
-        tipoDoacaoSelect.addEventListener('change', aplicarFiltros);
-        statusSelect.addEventListener('change', aplicarFiltros);
-        metodoPagamentoSelect.addEventListener('change', aplicarFiltros);
-        igrejaSelect.addEventListener('change', aplicarFiltros);
-        chavePixSelect.addEventListener('change', aplicarFiltros);
 
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
@@ -1949,15 +1558,12 @@
                 tabContents.forEach(c => c.classList.remove('active'));
                 tab.classList.add('active');
                 document.getElementById(`${tabId}-content`).classList.add('active');
-                
+                if (tabId === 'chaves-pix') carregarChavesPixDoLocalStorage();
                 if (tabId === 'historico') carregarHistoricoMensal();
-                else if (tabId === 'chaves-pix') carregarChavesPixDoLocalStorage();
             });
         });
 
-        document.addEventListener('DOMContentLoaded', () => {
-            usernameInput.focus();
-        });
+        document.addEventListener('DOMContentLoaded', () => usernameInput.focus());
     </script>
 </body>
 </html>
