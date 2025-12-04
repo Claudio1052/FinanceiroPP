@@ -1432,6 +1432,19 @@
                 } else {
                     igreja = identificarIgrejaPorChavePix(chavePix);
                 }
+
+                // Nova lógica para identificar igreja pelo identificador (external_reference)
+                if (item.external_reference) {
+                    const refLower = item.external_reference.toLowerCase();
+                    if (refLower.includes('inga')) {
+                        igreja = 'inga';
+                    } else if (refLower.includes('zona-leste')) {
+                        igreja = 'zona-leste';
+                    } else if (refLower.includes('estacao')) {
+                        igreja = 'estacao';
+                    }
+                }
+               
                 let tipoDoacao = 'outro';
                 if (descricao.toLowerCase().includes('dízimo') || descricao.toLowerCase().includes('dizimo')) {
                     tipoDoacao = 'dizimo';
