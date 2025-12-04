@@ -1088,35 +1088,7 @@
                 // Tentar diferentes endpoints da API
                 let chavesEncontradas = [];
                
-                // Endpoint 1: PIX Keys (mais comum)
-                try {
-                    const response = await fetch(`${API_BASE_URL}/v1/pix/keys`, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                   
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (Array.isArray(data)) {
-                            data.forEach(chave => {
-                                if (chave.status === 'active' || chave.status === 'approved') {
-                                    chavesEncontradas.push({
-                                        chave: chave.key || chave.key_value || chave.value || chave.id,
-                                        tipo: chave.key_type || 'unknown',
-                                        igreja: 'estacao' // Padrão, será ajustado se já existir
-                                    });
-                                }
-                            });
-                        }
-                    }
-                } catch (error) {
-                    console.log('Endpoint /v1/pix/keys falhou:', error);
-                }
-               
-                // Endpoint 2: User info (pode ter email como chave)
+                // Endpoint: User info (pode ter email, phone, identification)
                 try {
                     const response = await fetch(`${API_BASE_URL}/v1/users/me`, {
                         method: 'GET',
@@ -1136,6 +1108,31 @@
                                     tipo: 'email',
                                     igreja: 'estacao'
                                 });
+                            }
+                        }
+                        if (userData.phone && userData.phone.number) {
+                            let phoneChave = userData.phone.number;
+                            if (userData.phone.area_code) {
+                                phoneChave = userData.phone.area_code + phoneChave;
+                            }
+                            if (!chavesEncontradas.some(c => c.chave === phoneChave)) {
+                                chavesEncontradas.push({
+                                    chave: phoneChave,
+                                    tipo: 'telefone',
+                                    igreja: 'estacao'
+                                });
+                            }
+                        }
+                        if (userData.identification && userData.identification.type && userData.identification.number) {
+                            let tipo = userData.identification.type.toLowerCase();
+                            if (tipo === 'cpf' || tipo === 'cnpj') {
+                                if (!chavesEncontradas.some(c => c.chave === userData.identification.number)) {
+                                    chavesEncontradas.push({
+                                        chave: userData.identification.number,
+                                        tipo: tipo,
+                                        igreja: 'estacao'
+                                    });
+                                }
                             }
                         }
                     }
