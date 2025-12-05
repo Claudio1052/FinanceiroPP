@@ -176,7 +176,7 @@
         .filter-group { flex: 1; min-width: 200px; }
         .filter-group label { display: block; margin-bottom: 5px; font-weight: 500; color: var(--gray); }
         .filter-group input, .filter-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 1rem; }
-        .filter-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+        .filter-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
         
         /* BOTÕES */
         button { 
@@ -198,6 +198,27 @@
         .btn-success:hover { background-color: #218838; }
         .btn-church { background-color: var(--accent); color: white; }
         .btn-church:hover { background-color: #138496; }
+        .btn-export-completo {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-export-completo:hover {
+            background-color: #5a6268;
+        }
+        
+        /* BOTÕES DE AÇÃO NA TABELA */
+        .btn-detalhes, .btn-info {
+            background: var(--primary-light);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-detalhes:hover, .btn-info:hover {
+            background: var(--primary);
+        }
         
         /* TABELA DE TRANSAÇÕES */
         .transactions { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
@@ -262,6 +283,8 @@
         }
         .dizimo-badge { background-color: rgba(40, 167, 69, 0.1); color: var(--success); }
         .oferta-badge { background-color: rgba(23, 162, 184, 0.1); color: var(--accent); }
+        .construcao-badge { background-color: rgba(155, 89, 182, 0.1); color: #9b59b6; }
+        .missao-badge { background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; }
         .outro-badge { background-color: rgba(108, 117, 125, 0.1); color: var(--gray); }
         
         .igreja-badge {
@@ -520,6 +543,109 @@
         .refresh-pix-btn:hover {
             background-color: #8e44ad;
         }
+        
+        /* ESTILOS PARA MODAL DE DETALHES */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 30px;
+            position: relative;
+            width: 1200px;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-close:hover {
+            background: #c82333;
+        }
+        
+        .info-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .info-section h3 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .info-item {
+            margin-bottom: 8px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+        
+        .info-item strong {
+            color: var(--dark);
+            min-width: 150px;
+            display: inline-block;
+        }
+        
+        .raw-data-section {
+            background: #f1f3f4;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .raw-data-section pre {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 0.8rem;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        
+        /* ESTILOS PARA ITENS DO INFO-SECTION DENTRO DO MODAL */
+        .info-section .situacao-badge,
+        .info-section .igreja-badge,
+        .info-section .tipo-doacao-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -644,6 +770,8 @@
                                 <option value="">Todos</option>
                                 <option value="dizimo">Dízimo</option>
                                 <option value="oferta">Oferta</option>
+                                <option value="construcao">Construção</option>
+                                <option value="missao">Missão</option>
                                 <option value="outro">Outro</option>
                             </select>
                         </div>
@@ -660,6 +788,8 @@
                                 <option value="approved">Aprovado</option>
                                 <option value="pending">Pendente</option>
                                 <option value="cancelled">Cancelado</option>
+                                <option value="rejected">Rejeitado</option>
+                                <option value="refunded">Reembolsado</option>
                             </select>
                         </div>
                         <div class="filter-group">
@@ -713,7 +843,10 @@
                             <i class="fas fa-sync-alt"></i> Atualizar Dados
                         </button>
                         <button class="btn-church" id="exportar-dados">
-                            <i class="fas fa-file-export"></i> Exportar
+                            <i class="fas fa-file-export"></i> Exportar CSV
+                        </button>
+                        <button class="btn-export-completo" id="exportar-dados-completos">
+                            <i class="fas fa-database"></i> Exportar Todos os Dados
                         </button>
                         <button class="refresh-pix-btn" id="refresh-pix-keys">
                             <i class="fas fa-redo"></i> Atualizar Chaves Pix
@@ -744,9 +877,10 @@
                                 <th>Doador</th>
                                 <th>Igreja</th>
                                 <th>Método Pagamento</th>
-                                <th>ID Transação</th>
-                                <th>Observações</th>
-                                <th>Chave Pix</th>
+                                <th>Tipo Doação</th>
+                                <th>Parcelas</th>
+                                <th>Detalhes</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -865,6 +999,7 @@
         const limparFiltrosBtn = document.getElementById('limpar-filtros');
         const atualizarDadosBtn = document.getElementById('atualizar-dados');
         const exportarDadosBtn = document.getElementById('exportar-dados');
+        const exportarDadosCompletosBtn = document.getElementById('exportar-dados-completos');
         const dataInicioInput = document.getElementById('data-inicio');
         const dataFimInput = document.getElementById('data-fim');
         const tipoSelect = document.getElementById('tipo');
@@ -1117,7 +1252,7 @@
         // Identificar qual chave Pix foi utilizada na transação
         function identificarMinhaChavePixUtilizada(transacao) {
             // Para transações de entrada (crédito) via PIX, tentamos identificar qual chave foi usada
-            if (transacao.metodoPagamento === 'PIX') {
+            if (transacao.metodoPagamento === 'PIX' || transacao.metodoPagamento === 'pix') {
                 // Se temos chaves cadastradas, tentamos encontrar uma correspondência
                 if (minhasChavesPix.length > 0) {
                     // Prioridade 1: Verificar se alguma das minhas chaves aparece nos dados da transação
@@ -1196,9 +1331,8 @@
                 document.querySelector('.card.total .value').textContent = formatarValor(saldoGeral);
                 document.querySelector('.card.total p').textContent = 'Saldo Disponível';
 
-                // 4. Busca Pagamentos (Search API)
-                // Aumentei o limite para 500 para trazer mais transações
-                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=500&range=date_created&begin_date=${dtInicio}T00:00:00Z&end_date=${dtFim}T23:59:59Z`;
+                // 4. Busca Pagamentos (Search API) - Aumentado para 1000 transações
+                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=1000&range=date_created&begin_date=${dtInicio}T00:00:00Z&end_date=${dtFim}T23:59:59Z`;
                 
                 const dados = await fazerRequisicaoAPI(urlPagamentos);
                 
@@ -1243,94 +1377,259 @@
             return 'nao-identificada';
         }
 
-        // Processar dados reais da API e mapear para o formato do seu HTML original
+        // Processar dados reais da API incluindo TODOS os campos disponíveis
         function processarDadosReais(dados) {
+            console.log('Dados brutos da API:', dados); // Para debug
+            
             allTransactions = dados.map(item => {
                 const valor = item.transaction_amount || 0;
                 
                 // Determinar situação baseada no status
                 let situacao = 'Pendente';
-                if (item.status === 'approved') situacao = 'Aprovado';
-                else if (item.status === 'cancelled') situacao = 'Cancelado';
-                else if (item.status === 'rejected') situacao = 'Rejeitado';
+                let situacaoClass = 'situacao-pendente';
+                if (item.status === 'approved') {
+                    situacao = 'Aprovado';
+                    situacaoClass = 'situacao-aprovado';
+                } else if (item.status === 'cancelled') {
+                    situacao = 'Cancelado';
+                    situacaoClass = 'situacao-cancelado';
+                } else if (item.status === 'rejected') {
+                    situacao = 'Rejeitado';
+                    situacaoClass = 'situacao-cancelado';
+                } else if (item.status === 'refunded') {
+                    situacao = 'Reembolsado';
+                    situacaoClass = 'situacao-cancelado';
+                } else if (item.status === 'charged_back') {
+                    situacao = 'Estornado';
+                    situacaoClass = 'situacao-cancelado';
+                } else if (item.status === 'in_mediation') {
+                    situacao = 'Em Mediação';
+                    situacaoClass = 'situacao-pendente';
+                }
                 
                 // Data formatada
-                const dataHora = new Date(item.date_created);
-                const dataFormatada = dataHora.toLocaleDateString('pt-BR');
-                const horaFormatada = dataHora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                const dataCriacao = new Date(item.date_created);
+                const dataAprovacao = item.date_approved ? new Date(item.date_approved) : null;
+                const dataUltimaAtualizacao = item.date_last_updated ? new Date(item.date_last_updated) : null;
                 
-                // Descrição
-                const descricao = item.description || 'Sem descrição';
-                
-                // ID da transação
-                const idTransacao = item.id || 'N/A';
-                
-                // Código da operação (gerar aleatório se não existir)
-                const codigoOperacao = item.external_reference || gerarStringAleatoria(11);
-                
-                // Chave de segurança (gerar aleatório)
-                const chaveSeguranca = gerarStringAleatoria(16);
-                
-                // Chave Pix (usar email do pagador ou gerar)
-                let chavePix = 'N/A';
-                if (item.payer && item.payer.email) {
-                    chavePix = item.payer.email;
-                } else if (item.payment_method_id === 'pix') {
-                    chavePix = 'financeiro@verboestacao.com'; // Exemplo da imagem
-                }
-                
-                // Determinar método de pagamento
-                let metodoPagamento = 'Outro';
-                if (item.payment_method_id) {
-                    if (item.payment_method_id === 'pix') metodoPagamento = 'PIX';
-                    else if (item.payment_method_id === 'account_money') metodoPagamento = 'Saldo Mercado Pago';
-                    // CORREÇÃO: Se for master ou visa, mostrar como Cartão
-                    else if (item.payment_method_id.includes('card') || 
-                             item.payment_method_id === 'master' || 
-                             item.payment_method_id === 'visa') {
-                        metodoPagamento = 'Cartão';
-                    }
-                    else metodoPagamento = item.payment_method_id;
-                }
+                const dataFormatada = dataCriacao.toLocaleDateString('pt-BR');
+                const horaFormatada = dataCriacao.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
                 
                 // Determinar tipo (entrada/saída)
                 const tipo = (item.status_detail === 'accredited' || item.operation_type === 'regular_payment') ? 'credit' : 'debit';
                 
                 // Identificar qual chave Pix minha foi utilizada
                 const minhaChaveUtilizada = identificarMinhaChavePixUtilizada({
-                    metodoPagamento: metodoPagamento,
-                    descricao: descricao
+                    metodoPagamento: item.payment_method_id || '',
+                    descricao: item.description || ''
                 });
                 
                 // Determinar tipo de doação baseado na descrição
                 let tipoDoacao = 'outro';
-                if (descricao.toLowerCase().includes('dízimo') || descricao.toLowerCase().includes('dizimo')) {
-                    tipoDoacao = 'dizimo';
-                } else if (descricao.toLowerCase().includes('oferta')) {
-                    tipoDoacao = 'oferta';
+                if (item.description) {
+                    const descLower = item.description.toLowerCase();
+                    if (descLower.includes('dízimo') || descLower.includes('dizimo')) {
+                        tipoDoacao = 'dizimo';
+                    } else if (descLower.includes('oferta')) {
+                        tipoDoacao = 'oferta';
+                    } else if (descLower.includes('construção') || descLower.includes('construcao')) {
+                        tipoDoacao = 'construcao';
+                    } else if (descLower.includes('missão') || descLower.includes('missao')) {
+                        tipoDoacao = 'missao';
+                    }
                 }
                 
                 // Determinar igreja baseado na descrição e observações
-                const igreja = identificarIgreja(descricao, item.description || '');
-
+                const igreja = identificarIgreja(item.description || '', '');
+                
+                // Informações completas do pagador
+                let pagadorInfo = 'Não identificado';
+                let pagadorEmail = '';
+                let pagadorCPF = '';
+                
+                if (item.payer) {
+                    pagadorInfo = `${item.payer.first_name || ''} ${item.payer.last_name || ''}`.trim();
+                    pagadorEmail = item.payer.email || '';
+                    
+                    if (item.payer.identification) {
+                        pagadorCPF = `${item.payer.identification.type || ''}: ${item.payer.identification.number || ''}`;
+                    }
+                }
+                
+                // Informações do item (produto/serviço)
+                let itemDescricao = '';
+                let itemCategoria = '';
+                if (item.additional_info && item.additional_info.items) {
+                    const items = item.additional_info.items;
+                    if (items.length > 0) {
+                        itemDescricao = items.map(i => i.title || '').join(', ');
+                        itemCategoria = items.map(i => i.category_id || '').join(', ');
+                    }
+                }
+                
+                // Status detalhado
+                const statusDetalhado = item.status_detail || 'N/A';
+                const motivoStatus = item.status_detail || item.cause || [];
+                
+                // Informações de taxas
+                const taxaMercadoPago = item.fee_details ? item.fee_details.reduce((sum, fee) => sum + (fee.amount || 0), 0) : 0;
+                const valorLiquido = item.net_received_amount || (valor - taxaMercadoPago);
+                
+                // Informações da parcela (se houver)
+                const parcelas = item.installments || 1;
+                const valorParcela = item.transaction_details && item.transaction_details.installment_amount ? 
+                    item.transaction_details.installment_amount : (valor / parcelas);
+                
+                // ID externo (referência)
+                const referenciaExterna = item.external_reference || 'N/A';
+                
+                // Modo de pagamento detalhado
+                let modoPagamentoDetalhado = '';
+                if (item.payment_method) {
+                    modoPagamentoDetalhado = `${item.payment_method.id || ''} (${item.payment_method.type || ''})`;
+                }
+                
+                // Informações de reembolso/estorno
+                const valorReembolsado = item.refunds ? item.refunds.reduce((sum, r) => sum + (r.amount || 0), 0) : 0;
+                const motivoReembolso = item.refunds && item.refunds.length > 0 ? 
+                    item.refunds.map(r => r.reason || '').join(', ') : 'N/A';
+                
+                // Código de barras (se houver)
+                const codigoBarras = item.barcode ? item.barcode.content || 'N/A' : 'N/A';
+                
+                // Ponto de venda
+                const pontoVenda = item.point_of_interaction ? 
+                    `${item.point_of_interaction.type || ''} - ${item.point_of_interaction.application_data || ''}` : 'N/A';
+                
+                // Dispositivo de captura
+                const dispositivoCaptura = item.point_of_interaction && item.point_of_interaction.business_info ? 
+                    item.point_of_interaction.business_info.unit || 'N/A' : 'N/A';
+                
+                // Localização
+                const localizacao = item.metadata && item.metadata.location ? item.metadata.location : 'N/A';
+                
+                // Tags/categorias personalizadas
+                const tags = item.metadata && item.metadata.tags ? item.metadata.tags.join(', ') : 'N/A';
+                
+                // URL de notificação
+                const urlNotificacao = item.notification_url || 'N/A';
+                
+                // Dispositivo/sessão
+                const dispositivo = item.device_id || 'N/A';
+                const sessao = item.session_id || 'N/A';
+                
+                // Canal de venda
+                const canalVenda = item.order && item.order.type ? item.order.type : 'N/A';
+                
+                // Store ID
+                const storeId = item.store_id || 'N/A';
+                
+                // Integrador ID
+                const integradorId = item.integrator_id || 'N/A';
+                
+                // Nome da plataforma
+                const plataforma = item.platform_id || 'N/A';
+                
+                // Taxas adicionais
+                let outrasTaxas = [];
+                if (item.fee_details) {
+                    outrasTaxas = item.fee_details.map(fee => 
+                        `${fee.type || ''}: ${formatarValor(fee.amount || 0)}`
+                    );
+                }
+                
                 return {
+                    // Informações básicas
                     id: item.id,
                     situacao: situacao,
+                    situacaoClass: situacaoClass,
                     valor: valor,
-                    dataHora: `${dataFormatada} - ${horaFormatada}`,
-                    descricao: descricao,
-                    doador: item.payer && item.payer.first_name ? `${item.payer.first_name} ${item.payer.last_name || ''}` : 'Doador não identificado',
-                    tipoDoacao: tipoDoacao,
-                    igreja: igreja,
-                    idTransacao: idTransacao,
-                    codigoOperacao: codigoOperacao,
-                    chaveSeguranca: chaveSeguranca,
-                    chavePix: chavePix,
+                    valorLiquido: valorLiquido,
+                    taxaMercadoPago: taxaMercadoPago,
                     tipo: tipo,
                     status: item.status,
-                    metodoPagamento: metodoPagamento,
+                    statusDetalhado: statusDetalhado,
+                    motivoStatus: motivoStatus,
+                    
+                    // Datas
+                    dataHora: `${dataFormatada} - ${horaFormatada}`,
+                    dataCriacao: dataCriacao.toISOString(),
+                    dataAprovacao: dataAprovacao ? dataAprovacao.toISOString() : null,
+                    dataUltimaAtualizacao: dataUltimaAtualizacao ? dataUltimaAtualizacao.toISOString() : null,
+                    
+                    // Informações do pagador
+                    doador: pagadorInfo,
+                    pagadorEmail: pagadorEmail,
+                    pagadorCPF: pagadorCPF,
+                    pagadorId: item.payer && item.payer.id ? item.payer.id : 'N/A',
+                    
+                    // Informações da transação
+                    descricao: item.description || 'Sem descrição',
+                    tipoDoacao: tipoDoacao,
+                    igreja: igreja,
+                    idTransacao: item.id,
+                    referenciaExterna: referenciaExterna,
+                    codigoOperacao: referenciaExterna,
+                    chaveSeguranca: gerarStringAleatoria(16),
+                    
+                    // Método de pagamento
+                    metodoPagamento: item.payment_method_id || 'N/A',
+                    modoPagamentoDetalhado: modoPagamentoDetalhado,
+                    pontoVenda: pontoVenda,
+                    dispositivoCaptura: dispositivoCaptura,
+                    parcelas: parcelas,
+                    valorParcela: valorParcela,
+                    
+                    // Informações do PIX
+                    chavePix: item.point_of_interaction && item.point_of_interaction.transaction_data ? 
+                        item.point_of_interaction.transaction_data.qr_code || 
+                        item.point_of_interaction.transaction_data.ticket_url || 'N/A' : 'N/A',
                     minhaChaveUtilizada: minhaChaveUtilizada,
-                    observacoes: item.description || ''
+                    
+                    // Reembolso/Estorno
+                    valorReembolsado: valorReembolsado,
+                    motivoReembolso: motivoReembolso,
+                    
+                    // Informações técnicas
+                    codigoBarras: codigoBarras,
+                    urlNotificacao: urlNotificacao,
+                    dispositivo: dispositivo,
+                    sessao: sessao,
+                    canalVenda: canalVenda,
+                    storeId: storeId,
+                    integradorId: integradorId,
+                    plataforma: plataforma,
+                    
+                    // Informações adicionais
+                    itemDescricao: itemDescricao,
+                    itemCategoria: itemCategoria,
+                    localizacao: localizacao,
+                    tags: tags,
+                    outrasTaxas: outrasTaxas,
+                    
+                    // Observações completas
+                    observacoes: JSON.stringify({
+                        descricao: item.description,
+                        payment_type: item.payment_type_id,
+                        processing_mode: item.processing_mode,
+                        merchant_account_id: item.merchant_account_id,
+                        authorization_code: item.authorization_code,
+                        captured: item.captured,
+                        binary_mode: item.binary_mode,
+                        call_for_authorize_id: item.call_for_authorize_id,
+                        counter_currency: item.counter_currency,
+                        currency_id: item.currency_id,
+                        deduplication: item.deduplication_id,
+                        differential_pricing_id: item.differential_pricing_id,
+                        financing_group: item.financing_group,
+                        issuer_id: item.issuer_id,
+                        merchant_number: item.merchant_number,
+                        money_release_date: item.money_release_date,
+                        operation_type: item.operation_type,
+                        payment_method_option_id: item.payment_method_option_id,
+                        statement_descriptor: item.statement_descriptor,
+                        taxes_amount: item.taxes_amount
+                    }, null, 2)
                 };
             });
 
@@ -1342,6 +1641,9 @@
             atualizarContadores();
             loadingDiv.style.display = 'none';
             table.style.display = 'table';
+            
+            console.log('Total de transações processadas:', allTransactions.length);
+            console.log('Exemplo de transação completa:', allTransactions[0]);
         }
 
         // NOVA FUNÇÃO: Atualizar totais com base nas transações filtradas
@@ -1386,25 +1688,18 @@
             filteredTotalsInfo.style.display = 'none';
         }
 
-        // Renderizar transações (Mantendo a estrutura exata da tabela original)
+        // Renderizar transações com botão para ver todos os detalhes
         function renderizarTransacoes(transacoes) {
             tbody.innerHTML = '';
             
             if (transacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">Nenhuma doação encontrada com os filtros aplicados</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">Nenhuma doação encontrada com os filtros aplicados</td></tr>';
                 transactionsCount.textContent = 'Mostrando 0 de 0 doações';
                 return;
             }
             
             transacoes.forEach(transacao => {
                 const tr = document.createElement('tr');
-                
-                // Determinar cor da situação
-                let situacaoClass = '';
-                if (transacao.situacao === 'Aprovado') situacaoClass = 'situacao-aprovado';
-                else if (transacao.situacao === 'Cancelado') situacaoClass = 'situacao-cancelado';
-                else if (transacao.situacao === 'Rejeitado') situacaoClass = 'situacao-cancelado';
-                else situacaoClass = 'situacao-pendente';
                 
                 // Determinar badge de igreja
                 let igrejaTexto = '';
@@ -1420,30 +1715,344 @@
                     igrejaClass = 'igreja-nao-identificada';
                 }
                 
-                // Determinar chave Pix utilizada
-                let chavePixTexto = '-';
-                if (transacao.minhaChaveUtilizada && transacao.metodoPagamento === 'PIX') {
-                    chavePixTexto = `${transacao.minhaChaveUtilizada.chave} (${transacao.minhaChaveUtilizada.tipo})`;
-                } else if (transacao.metodoPagamento === 'PIX') {
-                    chavePixTexto = 'Chave não identificada';
+                // Determinar tipo de doação
+                let tipoDoacaoTexto = '';
+                let tipoDoacaoClass = '';
+                switch(transacao.tipoDoacao) {
+                    case 'dizimo':
+                        tipoDoacaoTexto = 'Dízimo';
+                        tipoDoacaoClass = 'dizimo-badge';
+                        break;
+                    case 'oferta':
+                        tipoDoacaoTexto = 'Oferta';
+                        tipoDoacaoClass = 'oferta-badge';
+                        break;
+                    case 'construcao':
+                        tipoDoacaoTexto = 'Construção';
+                        tipoDoacaoClass = 'construcao-badge';
+                        break;
+                    case 'missao':
+                        tipoDoacaoTexto = 'Missão';
+                        tipoDoacaoClass = 'missao-badge';
+                        break;
+                    default:
+                        tipoDoacaoTexto = 'Outro';
+                        tipoDoacaoClass = 'outro-badge';
                 }
                 
                 tr.innerHTML = `
-                    <td><span class="situacao-badge ${situacaoClass}">${transacao.situacao}</span></td>
+                    <td><span class="situacao-badge ${transacao.situacaoClass}">${transacao.situacao}</span></td>
                     <td class="amount ${transacao.tipo === 'credit' ? 'entrada-amount' : 'saida-amount'}">${formatarValor(transacao.valor)}</td>
                     <td>${transacao.dataHora}</td>
                     <td>${transacao.doador}</td>
                     <td><span class="igreja-badge ${igrejaClass}">${igrejaTexto}</span></td>
                     <td><span class="payment-method">${transacao.metodoPagamento}</span></td>
-                    <td><span class="id-transacao">${transacao.idTransacao}</span></td>
-                    <td>${transacao.observacoes || '-'}</td>
-                    <td>${chavePixTexto}</td>
+                    <td><span class="tipo-doacao-badge ${tipoDoacaoClass}">${tipoDoacaoTexto}</span></td>
+                    <td>${transacao.parcelas}x</td>
+                    <td>
+                        <button class="btn-detalhes" data-id="${transacao.id}" title="Ver todos os detalhes">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                    <td>
+                        <button class="btn-info" onclick="mostrarDetalhesCompletos('${transacao.id}')" title="Informações completas">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                    </td>
                 `;
                 
                 tbody.appendChild(tr);
             });
             
+            // Adicionar eventos aos botões de detalhes
+            document.querySelectorAll('.btn-detalhes').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const transacaoId = this.getAttribute('data-id');
+                    mostrarDetalhesCompletos(transacaoId);
+                });
+            });
+            
             transactionsCount.textContent = `Mostrando ${transacoes.length} de ${allTransactions.length} doações`;
+        }
+
+        // Função para mostrar todos os detalhes em um modal
+        function mostrarDetalhesCompletos(transacaoId) {
+            const transacao = allTransactions.find(t => t.id === transacaoId);
+            
+            if (!transacao) {
+                alert('Transação não encontrada');
+                return;
+            }
+            
+            // Criar modal
+            let modalHTML = `
+                <div class="modal-overlay" id="modalOverlay" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.8);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 1000;
+                    padding: 20px;
+                ">
+                    <div class="modal-content" style="
+                        background: white;
+                        border-radius: 10px;
+                        max-width: 90%;
+                        max-height: 90vh;
+                        overflow-y: auto;
+                        padding: 30px;
+                        position: relative;
+                        width: 1200px;
+                    ">
+                        <button class="modal-close" onclick="fecharModal()" style="
+                            position: absolute;
+                            top: 15px;
+                            right: 15px;
+                            background: var(--danger);
+                            color: white;
+                            border: none;
+                            width: 30px;
+                            height: 30px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 16px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">×</button>
+                        
+                        <h2 style="color: var(--primary); margin-bottom: 20px; border-bottom: 2px solid var(--primary-light); padding-bottom: 10px;">
+                            <i class="fas fa-receipt"></i> Detalhes Completos da Transação
+                        </h2>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            `;
+            
+            // Informações Básicas
+            modalHTML += `
+                <div class="info-section" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary);">
+                    <h3 style="color: var(--primary); margin-bottom: 10px; font-size: 1.1rem;">
+                        <i class="fas fa-info-circle"></i> Informações Básicas
+                    </h3>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>ID:</strong> ${transacao.id}
+                    </div>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Situação:</strong> <span class="situacao-badge ${transacao.situacaoClass}">${transacao.situacao}</span>
+                    </div>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Valor Bruto:</strong> ${formatarValor(transacao.valor)}
+                    </div>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Valor Líquido:</strong> ${formatarValor(transacao.valorLiquido)}
+                    </div>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Taxas:</strong> ${formatarValor(transacao.taxaMercadoPago)}
+                    </div>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Tipo:</strong> ${transacao.tipo === 'credit' ? 'Entrada' : 'Saída'}
+                    </div>
+                </div>
+            `;
+            
+            // Datas
+            modalHTML += `
+                <div class="info-section" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid var(--success);">
+                    <h3 style="color: var(--success); margin-bottom: 10px; font-size: 1.1rem;">
+                        <i class="fas fa-calendar-alt"></i> Datas
+                    </h3>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Criação:</strong> ${transacao.dataHora}
+                    </div>
+                    ${transacao.dataAprovacao ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Aprovação:</strong> ${new Date(transacao.dataAprovacao).toLocaleString('pt-BR')}
+                    </div>
+                    ` : ''}
+                    ${transacao.dataUltimaAtualizacao ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Última Atualização:</strong> ${new Date(transacao.dataUltimaAtualizacao).toLocaleString('pt-BR')}
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Pagador
+            modalHTML += `
+                <div class="info-section" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+                    <h3 style="color: var(--accent); margin-bottom: 10px; font-size: 1.1rem;">
+                        <i class="fas fa-user"></i> Pagador
+                    </h3>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Nome:</strong> ${transacao.doador}
+                    </div>
+                    ${transacao.pagadorEmail ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Email:</strong> ${transacao.pagadorEmail}
+                    </div>
+                    ` : ''}
+                    ${transacao.pagadorCPF ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>CPF/CNPJ:</strong> ${transacao.pagadorCPF}
+                    </div>
+                    ` : ''}
+                    ${transacao.pagadorId !== 'N/A' ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>ID Pagador:</strong> ${transacao.pagadorId}
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Pagamento
+            modalHTML += `
+                <div class="info-section" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid var(--secondary);">
+                    <h3 style="color: var(--secondary); margin-bottom: 10px; font-size: 1.1rem;">
+                        <i class="fas fa-credit-card"></i> Pagamento
+                    </h3>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Método:</strong> ${transacao.metodoPagamento}
+                    </div>
+                    ${transacao.modoPagamentoDetalhado ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Detalhes:</strong> ${transacao.modoPagamentoDetalhado}
+                    </div>
+                    ` : ''}
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Parcelas:</strong> ${transacao.parcelas}x de ${formatarValor(transacao.valorParcela)}
+                    </div>
+                    ${transacao.pontoVenda !== 'N/A' ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Ponto de Venda:</strong> ${transacao.pontoVenda}
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Igreja e Doação
+            modalHTML += `
+                <div class="info-section" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary-light);">
+                    <h3 style="color: var(--primary-light); margin-bottom: 10px; font-size: 1.1rem;">
+                        <i class="fas fa-church"></i> Igreja e Doação
+                    </h3>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Igreja:</strong> <span class="igreja-badge ${transacao.igreja === 'inga' ? 'igreja-inga' : transacao.igreja === 'zona-leste' ? 'igreja-zona-leste' : 'igreja-nao-identificada'}">
+                            ${transacao.igreja === 'inga' ? 'Verbo da Vida Ingá' : transacao.igreja === 'zona-leste' ? 'Verbo da Vida Zona Leste' : 'Não Identificada'}
+                        </span>
+                    </div>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Tipo Doação:</strong> <span class="tipo-doacao-badge ${transacao.tipoDoacao === 'dizimo' ? 'dizimo-badge' : transacao.tipoDoacao === 'oferta' ? 'oferta-badge' : transacao.tipoDoacao === 'construcao' ? 'construcao-badge' : transacao.tipoDoacao === 'missao' ? 'missao-badge' : 'outro-badge'}">
+                            ${transacao.tipoDoacao === 'dizimo' ? 'Dízimo' : transacao.tipoDoacao === 'oferta' ? 'Oferta' : transacao.tipoDoacao === 'construcao' ? 'Construção' : transacao.tipoDoacao === 'missao' ? 'Missão' : 'Outro'}
+                        </span>
+                    </div>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Descrição:</strong> ${transacao.descricao}
+                    </div>
+                    ${transacao.referenciaExterna !== 'N/A' ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Referência Externa:</strong> ${transacao.referenciaExterna}
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Informações Técnicas
+            modalHTML += `
+                <div class="info-section" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid var(--gray);">
+                    <h3 style="color: var(--gray); margin-bottom: 10px; font-size: 1.1rem;">
+                        <i class="fas fa-cogs"></i> Informações Técnicas
+                    </h3>
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Status Detalhado:</strong> ${transacao.statusDetalhado}
+                    </div>
+                    ${transacao.codigoBarras !== 'N/A' ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Código de Barras:</strong> ${transacao.codigoBarras}
+                    </div>
+                    ` : ''}
+                    ${transacao.dispositivo !== 'N/A' ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Dispositivo:</strong> ${transacao.dispositivo}
+                    </div>
+                    ` : ''}
+                    ${transacao.storeId !== 'N/A' ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Store ID:</strong> ${transacao.storeId}
+                    </div>
+                    ` : ''}
+                    ${transacao.plataforma !== 'N/A' ? `
+                    <div class="info-item" style="margin-bottom: 8px;">
+                        <strong>Plataforma:</strong> ${transacao.plataforma}
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Reembolso
+            if (transacao.valorReembolsado > 0) {
+                modalHTML += `
+                    <div class="info-section" style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                        <h3 style="color: #856404; margin-bottom: 10px; font-size: 1.1rem;">
+                            <i class="fas fa-undo"></i> Reembolso/Estorno
+                        </h3>
+                        <div class="info-item" style="margin-bottom: 8px;">
+                            <strong>Valor Reembolsado:</strong> ${formatarValor(transacao.valorReembolsado)}
+                        </div>
+                        ${transacao.motivoReembolso !== 'N/A' ? `
+                        <div class="info-item" style="margin-bottom: 8px;">
+                            <strong>Motivo:</strong> ${transacao.motivoReembolso}
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            modalHTML += `
+                        </div>
+                        
+                        <div class="raw-data-section" style="background: #f1f3f4; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                            <h3 style="color: var(--dark); margin-bottom: 10px; font-size: 1.1rem;">
+                                <i class="fas fa-code"></i> Dados Completos (JSON)
+                            </h3>
+                            <pre style="background: white; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.8rem; max-height: 300px; overflow-y: auto; font-family: monospace;">
+${transacao.observacoes}
+                            </pre>
+                        </div>
+                        
+                        <div style="margin-top: 20px; text-align: center;">
+                            <button onclick="fecharModal()" style="
+                                padding: 10px 30px;
+                                background: var(--primary);
+                                color: white;
+                                border: none;
+                                border-radius: 5px;
+                                cursor: pointer;
+                                font-weight: 500;
+                            ">
+                                <i class="fas fa-times"></i> Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Adicionar modal ao corpo do documento
+            const modalDiv = document.createElement('div');
+            modalDiv.innerHTML = modalHTML;
+            document.body.appendChild(modalDiv.firstElementChild);
+        }
+
+        // Função para fechar o modal
+        function fecharModal() {
+            const modal = document.getElementById('modalOverlay');
+            if (modal) {
+                modal.remove();
+            }
         }
 
         // Aplicar filtros (Lógica completa atualizada com filtro de chaves PIX)
@@ -1547,7 +2156,7 @@
             atualizarContadores();
         }
 
-        // Exportar dados
+        // Exportar dados básicos
         function exportarDados() {
             const transacoesParaExportar = filteredTransactions.length > 0 ? filteredTransactions : allTransactions;
             
@@ -1568,7 +2177,7 @@
                     transacao.dataHora.split(' - ')[0],
                     `"${transacao.doador}"`,
                     transacao.valor.toFixed(2),
-                    transacao.tipoDoacao === 'dizimo' ? 'Dízimo' : (transacao.tipoDoacao === 'oferta' ? 'Oferta' : 'Outro'),
+                    transacao.tipoDoacao === 'dizimo' ? 'Dízimo' : (transacao.tipoDoacao === 'oferta' ? 'Oferta' : transacao.tipoDoacao === 'construcao' ? 'Construção' : transacao.tipoDoacao === 'missao' ? 'Missão' : 'Outro'),
                     transacao.igreja === 'inga' ? 'Verbo da Vida Ingá' : (transacao.igreja === 'zona-leste' ? 'Verbo da Vida Zona Leste' : 'Não Identificada'),
                     transacao.metodoPagamento,
                     transacao.situacao,
@@ -1591,6 +2200,61 @@
             document.body.removeChild(link);
             
             alert(`Dados exportados com sucesso! ${transacoesParaExportar.length} registros.`);
+        }
+
+        // Função para exportar todos os dados completos
+        function exportarDadosCompletos() {
+            if (allTransactions.length === 0) {
+                alert('Não há dados para exportar.');
+                return;
+            }
+            
+            // Criar CSV com todos os campos
+            let csv = 'ID,Situação,Valor Bruto,Valor Líquido,Taxas,Tipo,Status,Data Criação,Doador,Email,CPF,Método Pagamento,Parcelas,Valor Parcela,Igreja,Tipo Doação,Descrição,Status Detalhado,Chave Pix,Código Barras,Dispositivo,Store ID,Plataforma,Valor Reembolsado\n';
+            
+            allTransactions.forEach(transacao => {
+                const linha = [
+                    transacao.id,
+                    transacao.situacao,
+                    transacao.valor.toFixed(2),
+                    transacao.valorLiquido.toFixed(2),
+                    transacao.taxaMercadoPago.toFixed(2),
+                    transacao.tipo === 'credit' ? 'Entrada' : 'Saída',
+                    transacao.status,
+                    transacao.dataHora,
+                    `"${transacao.doador}"`,
+                    `"${transacao.pagadorEmail}"`,
+                    `"${transacao.pagadorCPF}"`,
+                    transacao.metodoPagamento,
+                    transacao.parcelas,
+                    transacao.valorParcela.toFixed(2),
+                    transacao.igreja === 'inga' ? 'Verbo da Vida Ingá' : (transacao.igreja === 'zona-leste' ? 'Verbo da Vida Zona Leste' : 'Não Identificada'),
+                    transacao.tipoDoacao === 'dizimo' ? 'Dízimo' : (transacao.tipoDoacao === 'oferta' ? 'Oferta' : transacao.tipoDoacao === 'construcao' ? 'Construção' : transacao.tipoDoacao === 'missao' ? 'Missão' : 'Outro'),
+                    `"${transacao.descricao}"`,
+                    transacao.statusDetalhado,
+                    transacao.chavePix !== 'N/A' ? `"${transacao.chavePix}"` : '',
+                    transacao.codigoBarras !== 'N/A' ? `"${transacao.codigoBarras}"` : '',
+                    transacao.dispositivo !== 'N/A' ? `"${transacao.dispositivo}"` : '',
+                    transacao.storeId !== 'N/A' ? transacao.storeId : '',
+                    transacao.plataforma !== 'N/A' ? transacao.plataforma : '',
+                    transacao.valorReembolsado.toFixed(2)
+                ].join(',');
+                
+                csv += linha + '\n';
+            });
+            
+            // Criar e baixar arquivo
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `dados-completos-mercadopago-${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            alert(`Dados completos exportados com sucesso! ${allTransactions.length} registros.`);
         }
 
         function limparMensagens() {
@@ -1710,7 +2374,7 @@
             return Object.values(resultado);
         }
 
-        // NOVA FUNÇÃO: Atualizar gráfico de barras (mantida igual)
+        // NOVA FUNÇÃO: Atualizar gráfico de barras
         function atualizarGrafico(dados) {
             graficoBarras.innerHTML = '';
             
@@ -1739,7 +2403,7 @@
             });
         }
 
-        // NOVA FUNÇÃO: Atualizar tabela de histórico (mantida igual)
+        // NOVA FUNÇÃO: Atualizar tabela de histórico
         function atualizarTabelaHistorico(dados) {
             const tbody = tabelaHistorico.querySelector('tbody');
             tbody.innerHTML = '';
@@ -1812,6 +2476,7 @@
         limparFiltrosBtn.addEventListener('click', limparFiltros);
         atualizarDadosBtn.addEventListener('click', buscarMovimentos);
         exportarDadosBtn.addEventListener('click', exportarDados);
+        exportarDadosCompletosBtn.addEventListener('click', exportarDadosCompletos);
         
         // NOVO EVENT LISTENER: Atualizar chaves Pix
         refreshPixKeysBtn.addEventListener('click', async function() {
@@ -1834,6 +2499,7 @@
         });
 
         // Seleção de igreja
+        const churchButtons = document.querySelectorAll('.church-btn');
         churchButtons.forEach(btn => {
             btn.addEventListener('click', function() {
                 churchButtons.forEach(b => b.classList.remove('active'));
@@ -1881,6 +2547,13 @@
         // Inicialização - Foca no campo de usuário
         document.addEventListener('DOMContentLoaded', () => {
             usernameInput.focus();
+            
+            // Definir data padrão para 30 dias atrás
+            const hoje = new Date();
+            const trintaDiasAtras = new Date();
+            trintaDiasAtras.setDate(hoje.getDate() - 30);
+            dataInicioInput.value = trintaDiasAtras.toISOString().split('T')[0];
+            dataFimInput.value = hoje.toISOString().split('T')[0];
         });
     </script>
 </body>
