@@ -840,11 +840,15 @@
        
         const ACCESS_TOKEN = 'APP_USR-7942402403468023-112215-a0799e629a61e1568f394d40728fed58-674529245';
         const API_BASE_URL = 'https://api.mercadopago.com';
-        // CHAVES PIX PADRÃO (HARDCODED) - PRIORIDADE
+        
+        // CHAVES PIX PADRÃO - ATUALIZADAS COM FORMATO CORRETO
         const CHAVES_PIX_INICIAIS = [
             { chave: '83991993505', tipo: 'telefone', igreja: 'inga' },
-            { chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' }
+            { chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' },
+            { chave: 'financeiro@verbodavidainga.com.br', tipo: 'email', igreja: 'inga' },
+            { chave: 'financeiro@verbodavidazonaleste.com.br', tipo: 'email', igreja: 'zona-leste' }
         ];
+
         // Elementos DOM
         const loginScreen = document.getElementById('loginScreen');
         const mainSystem = document.getElementById('mainSystem');
@@ -900,6 +904,7 @@
         let minhasChavesPix = [];
         let saldoGeral = 0;
         let igrejaSelecionada = 'todas';
+        
         // Função de login
         function fazerLogin(usuario, senha) {
             const usuariosValidos = {
@@ -910,10 +915,12 @@
            
             return usuariosValidos[usuario] === senha;
         }
+        
         // Função para formatar valor
         function formatarValor(valor) {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
         }
+        
         // Função para obter nome da igreja
         function obterNomeIgreja(codigoIgreja) {
             switch(codigoIgreja) {
@@ -923,42 +930,43 @@
                 default: return 'Verbo da Vida Estação';
             }
         }
+        
         // Função para salvar chaves PIX no localStorage
         function salvarChavesPixNoLocalStorage() {
             localStorage.setItem('verbo_chaves_pix', JSON.stringify(minhasChavesPix));
             console.log('Chaves PIX salvas no localStorage:', minhasChavesPix);
         }
+        
         // Função para carregar chaves PIX do localStorage
         function carregarChavesPixDoLocalStorage() {
             const chavesSalvas = localStorage.getItem('verbo_chaves_pix');
             if (chavesSalvas) {
                 minhasChavesPix = JSON.parse(chavesSalvas);
-               
-                // Garantir que as chaves obrigatórias estejam presentes mesmo se o usuário tiver dados antigos
-                const phoneExists = minhasChavesPix.some(k => k.chave.replace(/\D/g, '').includes('83991993505'));
-                const emailExists = minhasChavesPix.some(k => k.chave.toLowerCase().includes('financeiro@verboestacao.com'));
-                if (!phoneExists) {
-                    minhasChavesPix.push({ chave: '83991993505', tipo: 'telefone', igreja: 'inga' });
-                }
-                if (!emailExists) {
-                    minhasChavesPix.push({ chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' });
-                }
+                
+                // Garantir que as chaves obrigatórias estejam presentes
+                CHAVES_PIX_INICIAIS.forEach(chaveInicial => {
+                    const existe = minhasChavesPix.some(k => k.chave === chaveInicial.chave);
+                    if (!existe) {
+                        minhasChavesPix.push(chaveInicial);
+                    }
+                });
             } else {
                 // Se não houver chaves salvas, usar as iniciais
                 minhasChavesPix = [...CHAVES_PIX_INICIAIS];
                 salvarChavesPixNoLocalStorage();
             }
-           
+            
             // Atualizar a lista de chaves na interface
             atualizarListaChavesPix();
             atualizarFiltroChavesPix();
-           
+            
             return minhasChavesPix;
         }
+        
         // Função para atualizar a lista de chaves na interface
         function atualizarListaChavesPix() {
             chavesListaContainer.innerHTML = '';
-           
+            
             if (minhasChavesPix.length === 0) {
                 chavesListaContainer.innerHTML = `
                     <div style="text-align: center; padding: 20px; color: var(--gray);">
@@ -969,11 +977,11 @@
                 `;
                 return;
             }
-           
+            
             minhasChavesPix.forEach((chave, index) => {
                 const chaveItem = document.createElement('div');
                 chaveItem.className = 'chave-item';
-               
+                
                 chaveItem.innerHTML = `
                     <div class="chave-info">
                         <span class="chave-valor">${chave.chave}</span>
@@ -989,44 +997,45 @@
                         </button>
                     </div>
                 `;
-               
+                
                 chavesListaContainer.appendChild(chaveItem);
             });
         }
+        
         // Funções globais para manipular chaves PIX
         window.adicionarChavePix = function() {
             const novaChave = novaChaveInput.value.trim();
             const novoTipo = novaChaveTipoSelect.value;
             const novaigreja = novaChaveIgrejaSelect.value;
-           
+            
             if (!novaChave) {
                 alert('Por favor, digite uma chave PIX válida.');
                 return;
             }
-           
+            
             // Verificar se a chave já existe
             if (minhasChavesPix.some(chave => chave.chave === novaChave)) {
                 alert('Esta chave PIX já está cadastrada.');
                 return;
             }
-           
+            
             // Adicionar nova chave
             minhasChavesPix.push({
                 chave: novaChave,
                 tipo: novoTipo,
                 igreja: novaigreja
             });
-           
+            
             // Salvar no localStorage
             salvarChavesPixNoLocalStorage();
-           
+            
             // Atualizar interfaces
             atualizarListaChavesPix();
             atualizarFiltroChavesPix();
-           
+            
             // Limpar formulário
             novaChaveInput.value = '';
-           
+            
             // Mostrar mensagem de sucesso
             apiStatusDiv.innerHTML = `
                 <div class="success" style="margin: 10px 0;">
@@ -1034,13 +1043,23 @@
                 </div>
             `;
         };
+        
         window.removerChavePix = function(index) {
+            // Não permitir remover as chaves iniciais
+            const chave = minhasChavesPix[index];
+            const isChaveInicial = CHAVES_PIX_INICIAIS.some(c => c.chave === chave.chave);
+            
+            if (isChaveInicial) {
+                alert('Esta é uma chave PIX inicial e não pode ser removida.');
+                return;
+            }
+            
             if (confirm('Tem certeza que deseja remover esta chave PIX?')) {
                 minhasChavesPix.splice(index, 1);
                 salvarChavesPixNoLocalStorage();
                 atualizarListaChavesPix();
                 atualizarFiltroChavesPix();
-               
+                
                 apiStatusDiv.innerHTML = `
                     <div class="success" style="margin: 10px 0;">
                         <i class="fas fa-check-circle"></i> Chave PIX removida com sucesso!
@@ -1048,26 +1067,33 @@
                 `;
             }
         };
+        
         window.editarChavePix = function(index) {
             const chave = minhasChavesPix[index];
-           
+            const isChaveInicial = CHAVES_PIX_INICIAIS.some(c => c.chave === chave.chave);
+            
+            if (isChaveInicial) {
+                alert('Esta é uma chave PIX inicial e não pode ser editada.');
+                return;
+            }
+            
             // Criar modal de edição simples
             const novaChave = prompt('Editar chave PIX:', chave.chave);
             if (novaChave !== null) {
                 const novoTipo = prompt('Tipo da chave (telefone/email/cpf/cnpj):', chave.tipo);
                 const novaigreja = prompt('Igreja (inga/zona-leste/estacao):', chave.igreja);
-               
+                
                 if (novaChave && novoTipo && novaigreja) {
                     minhasChavesPix[index] = {
                         chave: novaChave,
                         tipo: novoTipo,
                         igreja: novaigreja
                     };
-                   
+                    
                     salvarChavesPixNoLocalStorage();
                     atualizarListaChavesPix();
                     atualizarFiltroChavesPix();
-                   
+                    
                     apiStatusDiv.innerHTML = `
                         <div class="success" style="margin: 10px 0;">
                             <i class="fas fa-check-circle"></i> Chave PIX atualizada com sucesso!
@@ -1076,112 +1102,11 @@
                 }
             }
         };
-        // Função para buscar chaves PIX da API do Mercado Pago
-        async function buscarChavesPixDaAPI() {
-            try {
-                apiStatusDiv.innerHTML = `
-                    <div style="text-align: center; padding: 10px;">
-                        <i class="fas fa-spinner fa-spin"></i> Buscando chaves PIX da API do Mercado Pago...
-                    </div>
-                `;
-               
-                // Tentar diferentes endpoints da API
-                let chavesEncontradas = [];
-               
-                // Endpoint: User info (pode ter email, phone, identification)
-                try {
-                    const response = await fetch(`${API_BASE_URL}/v1/users/me`, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                   
-                    if (response.ok) {
-                        const userData = await response.json();
-                        if (userData.email) {
-                            // Verificar se o email já está na lista
-                            if (!chavesEncontradas.some(c => c.chave === userData.email)) {
-                                chavesEncontradas.push({
-                                    chave: userData.email,
-                                    tipo: 'email',
-                                    igreja: 'estacao'
-                                });
-                            }
-                        }
-                        if (userData.phone && userData.phone.number) {
-                            let phoneChave = userData.phone.number;
-                            if (userData.phone.area_code) {
-                                phoneChave = userData.phone.area_code + phoneChave;
-                            }
-                            if (!chavesEncontradas.some(c => c.chave === phoneChave)) {
-                                chavesEncontradas.push({
-                                    chave: phoneChave,
-                                    tipo: 'telefone',
-                                    igreja: 'estacao'
-                                });
-                            }
-                        }
-                        if (userData.identification && userData.identification.type && userData.identification.number) {
-                            let tipo = userData.identification.type.toLowerCase();
-                            if (tipo === 'cpf' || tipo === 'cnpj') {
-                                if (!chavesEncontradas.some(c => c.chave === userData.identification.number)) {
-                                    chavesEncontradas.push({
-                                        chave: userData.identification.number,
-                                        tipo: tipo,
-                                        igreja: 'estacao'
-                                    });
-                                }
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.log('Endpoint /v1/users/me falhou:', error);
-                }
-               
-                // Mesclar com chaves existentes
-                if (chavesEncontradas.length > 0) {
-                    // Para cada chave encontrada, verificar se já existe
-                    chavesEncontradas.forEach(novaChave => {
-                        const chaveExistente = minhasChavesPix.find(c => c.chave === novaChave.chave);
-                        if (!chaveExistente) {
-                            minhasChavesPix.push(novaChave);
-                        }
-                    });
-                   
-                    salvarChavesPixNoLocalStorage();
-                    atualizarListaChavesPix();
-                    atualizarFiltroChavesPix();
-                   
-                    apiStatusDiv.innerHTML = `
-                        <div class="success" style="margin: 10px 0;">
-                            <i class="fas fa-check-circle"></i> ${chavesEncontradas.length} chave(s) PIX encontrada(s) na API e adicionada(s) à lista!
-                        </div>
-                    `;
-                } else {
-                    apiStatusDiv.innerHTML = `
-                        <div class="error" style="margin: 10px 0;">
-                            <i class="fas fa-exclamation-triangle"></i> Nenhuma chave PIX encontrada na API do Mercado Pago.
-                            <p style="font-size: 0.9rem; margin-top: 5px;">Você pode adicionar manualmente suas chaves PIX acima.</p>
-                        </div>
-                    `;
-                }
-               
-            } catch (error) {
-                console.error('Erro ao buscar chaves da API:', error);
-                apiStatusDiv.innerHTML = `
-                    <div class="error" style="margin: 10px 0;">
-                        <i class="fas fa-exclamation-triangle"></i> Erro ao conectar com a API do Mercado Pago: ${error.message}
-                        <p style="font-size: 0.9rem; margin-top: 5px;">Verifique seu token de acesso e tente novamente.</p>
-                    </div>
-                `;
-            }
-        }
+        
         // Atualizar o select de filtro de chaves PIX
         function atualizarFiltroChavesPix() {
             chavePixSelect.innerHTML = '<option value="">Todas as Chaves</option>';
-           
+            
             if (minhasChavesPix && minhasChavesPix.length > 0) {
                 minhasChavesPix.forEach(chave => {
                     const option = document.createElement('option');
@@ -1191,74 +1116,90 @@
                 });
             }
         }
-        // Identificar igreja baseada na chave PIX (Prioridade Absoluta)
+        
+        // Função melhorada para identificar igreja baseada na chave PIX
         function identificarIgrejaPorChavePix(chave) {
             if (!chave) return 'estacao';
-           
+            
+            // Normalizar a chave para comparação
             const chaveLimpa = chave.replace(/\D/g, '');
             const chaveLower = chave.toLowerCase();
-            // REGRAS HARDCODED DE PRIORIDADE MÁXIMA
-            if (chaveLimpa.includes('83991993505')) {
-                return 'inga';
-            }
-            if (chaveLower.includes('financeiro@verboestacao.com')) {
-                return 'estacao';
-            }
-           
-            // Busca nas chaves cadastradas
+            
+            // Primeiro, verificar chaves exatas
             for (const minhaChave of minhasChavesPix) {
-                if (minhaChave.tipo === 'email' && chaveLower.includes('@')) {
-                    if (chaveLower.includes(minhaChave.chave.toLowerCase())) {
-                        return minhaChave.igreja;
-                    }
-                } else if (minhaChave.tipo === 'telefone' || minhaChave.tipo === 'phone') {
+                // Para email: comparação exata (case-insensitive)
+                if (minhaChave.tipo === 'email' && chaveLower === minhaChave.chave.toLowerCase()) {
+                    return minhaChave.igreja;
+                }
+                
+                // Para telefone: compara os números sem formatação
+                if (minhaChave.tipo === 'telefone') {
                     const minhaChaveLimpa = minhaChave.chave.replace(/\D/g, '');
-                    if (chaveLimpa.includes(minhaChaveLimpa) && minhaChaveLimpa.length > 5) {
+                    if (chaveLimpa === minhaChaveLimpa) {
                         return minhaChave.igreja;
                     }
-                } else {
-                    if (chave.includes(minhaChave.chave)) {
+                    
+                    // Verificar se a chave da transação contém a chave cadastrada (para números com DDI/DDD)
+                    if (chaveLimpa.includes(minhaChaveLimpa) && minhaChaveLimpa.length >= 10) {
                         return minhaChave.igreja;
                     }
                 }
+                
+                // Para CPF/CNPJ: comparação exata dos números
+                if ((minhaChave.tipo === 'cpf' || minhaChave.tipo === 'cnpj') && chaveLimpa === minhaChave.chave.replace(/\D/g, '')) {
+                    return minhaChave.igreja;
+                }
             }
-           
+            
+            // Se não encontrou correspondência exata, retorna padrão
             return 'estacao';
         }
-        // Identificar qual chave Pix foi utilizada na transação
+        
+        // Função melhorada para identificar qual chave Pix foi utilizada
         function identificarMinhaChavePixUtilizada(transacao) {
             if (transacao.tipo === 'credit' && transacao.metodoPagamento === 'PIX') {
                 const chaveTransacao = transacao.chavePix || '';
+                
+                // Normalizar a chave da transação
                 const chaveTransacaoLimpa = chaveTransacao.replace(/\D/g, '');
                 const chaveTransacaoLower = chaveTransacao.toLowerCase();
-                // REGRAS HARDCODED
-                if (chaveTransacaoLimpa.includes('83991993505')) {
-                    return { chave: '83991993505', tipo: 'telefone', igreja: 'inga' };
-                }
-                if (chaveTransacaoLower.includes('financeiro@verboestacao.com')) {
-                    return { chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' };
-                }
-               
+                
+                // Buscar correspondência exata primeiro
                 for (const minhaChave of minhasChavesPix) {
-                    if (minhaChave.tipo === 'email' && chaveTransacaoLower.includes('@')) {
-                        if (chaveTransacaoLower.includes(minhaChave.chave.toLowerCase())) {
-                            return minhaChave;
-                        }
-                    } else if (minhaChave.tipo === 'telefone' || minhaChave.tipo === 'phone') {
+                    // Para email: comparação exata
+                    if (minhaChave.tipo === 'email' && chaveTransacaoLower === minhaChave.chave.toLowerCase()) {
+                        return minhaChave;
+                    }
+                    
+                    // Para telefone: compara números limpos
+                    if (minhaChave.tipo === 'telefone') {
                         const minhaChaveLimpa = minhaChave.chave.replace(/\D/g, '');
-                        if (chaveTransacaoLimpa.includes(minhaChaveLimpa) && minhaChaveLimpa.length > 5) {
+                        if (chaveTransacaoLimpa === minhaChaveLimpa) {
                             return minhaChave;
                         }
-                    } else {
-                        if (chaveTransacao.includes(minhaChave.chave)) {
+                        
+                        // Verificar se é um subconjunto (para números com DDI/DDD diferentes)
+                        if (chaveTransacaoLimpa.includes(minhaChaveLimpa) && minhaChaveLimpa.length >= 10) {
                             return minhaChave;
                         }
                     }
+                    
+                    // Para CPF/CNPJ: comparação exata
+                    if ((minhaChave.tipo === 'cpf' || minhaChave.tipo === 'cnpj') && 
+                        chaveTransacaoLimpa === minhaChave.chave.replace(/\D/g, '')) {
+                        return minhaChave;
+                    }
+                    
+                    // Verificação por substring para emails
+                    if (minhaChave.tipo === 'email' && chaveTransacaoLower.includes(minhaChave.chave.toLowerCase())) {
+                        return minhaChave;
+                    }
                 }
             }
-           
+            
             return null;
         }
+        
         // Função Genérica de Requisição com Tratamento de Erro Robusto
         async function fazerRequisicaoAPI(url) {
             try {
@@ -1282,6 +1223,7 @@
                 throw error;
             }
         }
+        
         // Buscar saldo da conta
         async function buscarSaldo() {
             try {
@@ -1297,46 +1239,50 @@
                 return 0;
             }
         }
+        
         // Buscar movimentos/pagamentos
         async function buscarMovimentos() {
             try {
                 limparMensagens();
                 loadingDiv.style.display = 'block';
                 table.style.display = 'none';
-               
+                
                 // Carregar chaves PIX
                 await carregarChavesPixDoLocalStorage();
-               
+                
                 // Define datas
                 const hoje = new Date();
                 const trintaDiasAtras = new Date();
                 trintaDiasAtras.setDate(hoje.getDate() - 30);
-               
+                
                 if(!dataInicioInput.value) dataInicioInput.value = trintaDiasAtras.toISOString().split('T')[0];
                 if(!dataFimInput.value) dataFimInput.value = hoje.toISOString().split('T')[0];
                 const dtInicio = dataInicioInput.value;
                 const dtFim = dataFimInput.value;
+                
                 // Atualiza Saldo
                 saldoGeral = await buscarSaldo();
                 document.querySelector('.card.total .value').textContent = formatarValor(saldoGeral);
                 document.querySelector('.card.total p').textContent = 'Saldo Disponível';
+                
                 // Busca Pagamentos
                 const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=500&range=date_created&begin_date=${dtInicio}T00:00:00Z&end_date=${dtFim}T23:59:59Z`;
-               
+                
                 const dados = await fazerRequisicaoAPI(urlPagamentos);
-               
+                
                 if (dados.results) {
                     processarDadosReais(dados.results);
                 } else {
                     throw new Error('Lista de transações vazia ou formato inesperado.');
                 }
-               
+                
             } catch (error) {
                 console.error('Erro geral:', error);
                 mostrarErro(`Erro: ${error.message}`);
                 loadingDiv.style.display = 'none';
             }
         }
+        
         // Função para parsear string EMV (TLV format)
         function parseEMV(emvString) {
             const result = {};
@@ -1356,43 +1302,44 @@
         // Função para extrair a chave PIX real do QR Code (EMV string)
         function extractPixKey(qrCode) {
             if (!qrCode) return '';
-            const emv = parseEMV(qrCode);
-            const merchantInfo = emv['26'];
-            if (merchantInfo) {
-                const subEmv = parseEMV(merchantInfo);
-                const pixKey = subEmv['01'];
-                if (pixKey) return pixKey;
+            
+            try {
+                const emv = parseEMV(qrCode);
+                const merchantInfo = emv['26'];
+                if (merchantInfo) {
+                    const subEmv = parseEMV(merchantInfo);
+                    const pixKey = subEmv['01'];
+                    if (pixKey) {
+                        // Remover qualquer espaço ou caractere especial
+                        return pixKey.trim();
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao extrair chave PIX:', error);
             }
+            
             return '';
         }
 
-        // Função para determinar o tipo da chave PIX
-        function getPixKeyType(key) {
-            if (key.includes('@')) return 'email';
-            if (/^\d{11}$/.test(key.replace(/\D/g, ''))) return 'cpf';
-            if (/^\d{14}$/.test(key.replace(/\D/g, ''))) return 'cnpj';
-            if (/^(\+55)?\d{10,11}$/.test(key)) return 'telefone';
-            return 'chave-aleatoria';
-        }
         // Processar dados reais da API
         function processarDadosReais(dados) {
             allTransactions = dados.map(item => {
                 const valor = item.transaction_amount || 0;
-               
+                
                 let situacao = 'Pendente';
                 if (item.status === 'approved') situacao = 'Aprovado';
                 else if (item.status === 'cancelled') situacao = 'Cancelado';
                 else if (item.status === 'rejected') situacao = 'Rejeitado';
-               
+                
                 const dataHora = new Date(item.date_created);
                 const dataFormatada = dataHora.toLocaleDateString('pt-BR');
                 const horaFormatada = dataHora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-               
+                
                 const descricao = item.description || 'Sem descrição';
                 const idTransacao = item.id || 'N/A';
-               
+                
                 let chavePix = '';
-               
+                
                 // Extrair a chave PIX real do QR Code usando o parser EMV
                 if (item.payment_method_id === 'pix' && item.point_of_interaction && item.point_of_interaction.transaction_data) {
                     const txData = item.point_of_interaction.transaction_data;
@@ -1400,10 +1347,7 @@
                         chavePix = extractPixKey(txData.qr_code);
                     }
                 }
-               
-                // Se não achou no QR Code, e é entrada PIX, tenta outras fontes ou mantém vazio
-                // Nota: item.payer.email é quem pagou, não quem recebeu.
-               
+                
                 let metodoPagamento = 'Outro';
                 if (item.payment_method_id) {
                     if (item.payment_method_id === 'pix') metodoPagamento = 'PIX';
@@ -1415,17 +1359,17 @@
                     }
                     else metodoPagamento = item.payment_method_id;
                 }
-               
+                
                 const tipo = (item.status_detail === 'accredited' || item.operation_type === 'regular_payment') ? 'credit' : 'debit';
-               
-                const transacaoParaAnalise = {
+                
+                // Identificar qual chave PIX foi utilizada
+                const minhaChaveUtilizada = identificarMinhaChavePixUtilizada({
                     tipo: tipo,
                     metodoPagamento: metodoPagamento,
                     chavePix: chavePix
-                };
-               
-                const minhaChaveUtilizada = identificarMinhaChavePixUtilizada(transacaoParaAnalise);
-               
+                });
+                
+                // Determinar igreja
                 let igreja = 'estacao';
                 if (minhaChaveUtilizada) {
                     igreja = minhaChaveUtilizada.igreja;
@@ -1438,20 +1382,20 @@
                     const refLower = item.external_reference.toLowerCase();
                     if (refLower.includes('inga')) {
                         igreja = 'inga';
-                    } else if (refLower.includes('zona-leste')) {
+                    } else if (refLower.includes('zona-leste') || refLower.includes('zonaleste')) {
                         igreja = 'zona-leste';
-                    } else if (refLower.includes('estacao')) {
+                    } else if (refLower.includes('estacao') || refLower.includes('estação')) {
                         igreja = 'estacao';
                     }
                 }
-               
+                
                 let tipoDoacao = 'outro';
                 if (descricao.toLowerCase().includes('dízimo') || descricao.toLowerCase().includes('dizimo')) {
                     tipoDoacao = 'dizimo';
                 } else if (descricao.toLowerCase().includes('oferta')) {
                     tipoDoacao = 'oferta';
                 }
-               
+                
                 let doadorNome = 'Doador não identificado';
                 if (item.payer) {
                     if (item.payer.first_name) {
@@ -1463,6 +1407,7 @@
                         doadorNome = item.payer.email.split('@')[0];
                     }
                 }
+                
                 return {
                     id: item.id,
                     situacao: situacao,
@@ -1482,34 +1427,36 @@
                     chavePixUsada: minhaChaveUtilizada ? minhaChaveUtilizada.chave : (chavePix || 'Chave não identificada')
                 };
             });
+            
             connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado - Dados Reais Carregados</span>';
             connectionStatus.className = 'connection-status status-connected';
-           
+            
             aplicarFiltros();
             atualizarContadores();
             loadingDiv.style.display = 'none';
             table.style.display = 'table';
         }
+        
         function atualizarContadores() {
             // Conta entradas, saídas e total de transações
             const totalTransacoes = filteredTransactions.length;
-           
+            
             // Soma entradas e saídas
             const totalEntradas = filteredTransactions
                 .filter(t => t.tipo === 'credit' && t.situacao === 'Aprovado')
                 .reduce((acc, t) => acc + t.valor, 0);
-               
+                
             const totalSaidas = filteredTransactions
                 .filter(t => t.tipo === 'debit' && t.situacao !== 'Cancelado' && t.situacao !== 'Rejeitado')
                 .reduce((acc, t) => acc + t.valor, 0);
-           
+            
             // Atualiza os cards
             document.querySelector('.card.entrada .value').textContent = formatarValor(totalEntradas);
             document.querySelector('.card.saida .value').textContent = formatarValor(totalSaidas);
-           
+            
             // Se estamos filtrando, mostrar saldo calculado do período/filtro, senão mostra saldo da conta
             const filtrosAtivos = verificarFiltrosAtivos();
-           
+            
             if (filtrosAtivos) {
                 document.querySelector('.card.total .value').textContent = formatarValor(totalEntradas - totalSaidas);
                 document.querySelector('.card.total p').textContent = 'Resultado do Filtro';
@@ -1520,10 +1467,10 @@
                 document.querySelector('.card.total p').textContent = 'Saldo Disponível';
                 filteredTotalsInfo.style.display = 'none';
             }
-           
+            
             transactionsCount.textContent = `${totalTransacoes} transações`;
         }
-       
+        
         function verificarFiltrosAtivos() {
             return (
                 tipoSelect.value !== '' ||
@@ -1537,40 +1484,41 @@
                 chavePixSelect.value !== ''
             );
         }
+        
         function renderizarTransacoes() {
             tbody.innerHTML = '';
-           
+            
             if (filteredTransactions.length === 0) {
                 const tr = document.createElement('tr');
                 tr.innerHTML = '<td colspan="8" style="text-align: center; padding: 30px;">Nenhuma doação encontrada com os filtros atuais.</td>';
                 tbody.appendChild(tr);
                 return;
             }
-           
+            
             filteredTransactions.forEach(t => {
                 const tr = document.createElement('tr');
-               
+                
                 // Classe para valor (verde para entrada, vermelho para saída)
                 const valorClass = t.tipo === 'credit' ? 'text-success' : 'text-danger';
                 const valorSinal = t.tipo === 'credit' ? '+' : '-';
-               
+                
                 // Badge de situação
                 let badgeClass = 'badge-info';
                 if (t.situacao === 'Aprovado') badgeClass = 'badge-success';
                 else if (t.situacao === 'Cancelado' || t.situacao === 'Rejeitado') badgeClass = 'badge-danger';
-               
+                
                 // Badge de Igreja
                 let igrejaBadge = '';
                 if (t.igreja === 'inga') igrejaBadge = '<span class="chave-igreja">Ingá</span>';
                 else if (t.igreja === 'zona-leste') igrejaBadge = '<span class="chave-igreja">Zona Leste</span>';
                 else if (t.igreja === 'estacao') igrejaBadge = '<span class="chave-igreja">Estação</span>';
-               
+                
                 // Informação de Chave Pix
                 let chaveInfo = '-';
                 if (t.metodoPagamento === 'PIX') {
                     chaveInfo = `<small style="color:var(--secondary)">${t.chavePixUsada}</small>`;
                 }
-               
+                
                 tr.innerHTML = `
                     <td><span class="badge ${badgeClass}">${t.situacao}</span></td>
                     <td class="${valorClass}" style="font-weight: 600;">${valorSinal} ${formatarValor(t.valor)}</td>
@@ -1581,10 +1529,11 @@
                     <td>${chaveInfo}</td>
                     <td>${t.observacoes}</td>
                 `;
-               
+                
                 tbody.appendChild(tr);
             });
         }
+        
         function aplicarFiltros() {
             // Pega valores dos filtros
             const tipo = tipoSelect.value;
@@ -1595,11 +1544,11 @@
             const metodo = metodoPagamentoSelect.value;
             const igrejaFiltro = igrejaSelect.value;
             const chaveFiltro = chavePixSelect.value;
-           
+            
             filteredTransactions = allTransactions.filter(t => {
                 // Filtro de Igreja (Botões Superiores)
                 if (igrejaSelecionada !== 'todas' && t.igreja !== igrejaSelecionada) return false;
-               
+                
                 // Filtros do formulário
                 if (tipo && t.tipo !== tipo) return false;
                 if (doador && !t.doador.toLowerCase().includes(doador)) return false;
@@ -1608,19 +1557,19 @@
                 if (status && t.status !== status) return false;
                 if (metodo && t.metodoPagamento !== metodo) return false;
                 if (igrejaFiltro && t.igreja !== igrejaFiltro) return false;
-               
+                
                 // Filtro de Chave PIX
                 if (chaveFiltro) {
-                    // Verifica se a chave usada na transação contém o valor selecionado
                     if (!t.chavePixUsada || !t.chavePixUsada.includes(chaveFiltro)) return false;
                 }
-               
+                
                 return true;
             });
-           
+            
             renderizarTransacoes();
             atualizarContadores();
         }
+        
         function limparFiltros() {
             tipoSelect.value = '';
             doadorInput.value = '';
@@ -1630,20 +1579,20 @@
             metodoPagamentoSelect.value = '';
             igrejaSelect.value = '';
             chavePixSelect.value = '';
-           
+            
             // Não limpamos as datas nem a igreja selecionada no topo
             aplicarFiltros();
         }
-       
+        
         function exportarDados() {
             if (filteredTransactions.length === 0) {
                 alert("Não há dados para exportar.");
                 return;
             }
-           
+            
             let csvContent = "data:text/csv;charset=utf-8,";
             csvContent += "ID;Data;Hora;Tipo;Valor;Situação;Doador;Igreja;Método;Chave PIX;Observação\n";
-           
+            
             filteredTransactions.forEach(t => {
                 const dataSplit = t.dataHora.split(' - ');
                 const row = [
@@ -1661,7 +1610,7 @@
                 ].join(";");
                 csvContent += row + "\n";
             });
-           
+            
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -1670,105 +1619,116 @@
             link.click();
             document.body.removeChild(link);
         }
+        
         function limparMensagens() {
             connectionStatus.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i><span>Sincronizando...</span>';
             connectionStatus.className = 'connection-status';
             loginError.style.display = 'none';
         }
+        
         function mostrarErro(mensagem) {
             connectionStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>${mensagem}</span>`;
             connectionStatus.className = 'connection-status status-disconnected';
             loadingDiv.style.display = 'none';
         }
-       
+        
         // --- FUNÇÕES PARA O HISTÓRICO MENSAL ---
-       
+        
         async function carregarHistoricoMensal() {
             const ano = anoFiltroSelect.value;
             const igreja = igrejaFiltroSelect.value;
-           
+            
             historicoLoading.style.display = 'block';
             tabelaHistorico.querySelector('tbody').innerHTML = '';
             graficoBarras.innerHTML = '';
             historicoCount.textContent = 'Buscando dados...';
-           
+            
             try {
                 // Definir período de busca: todo o ano selecionado
                 const dtInicio = `${ano}-01-01`;
                 const dtFim = `${ano}-12-31`;
-               
+                
                 // URL de busca (busca ampliada)
                 const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=1000&range=date_created&begin_date=${dtInicio}T00:00:00Z&end_date=${dtFim}T23:59:59Z`;
-               
+                
                 const dados = await fazerRequisicaoAPI(urlPagamentos);
-               
+                
                 if (dados.results) {
                     processarDadosPorMes(dados.results, igreja);
                 } else {
                     historicoCount.textContent = 'Nenhum dado encontrado.';
                     historicoLoading.style.display = 'none';
                 }
-               
+                
             } catch (error) {
                 console.error('Erro historico:', error);
                 historicoCount.textContent = 'Erro ao buscar dados.';
                 historicoLoading.style.display = 'none';
             }
         }
-       
+        
         function processarDadosPorMes(transacoes, igrejaFiltro) {
             // Inicializar array com 12 meses zerados
             const dadosMeses = Array(12).fill(0).map(() => ({ entradas: 0, saidas: 0 }));
-           
+            
             transacoes.forEach(t => {
-                // Filtrar por igreja se necessário
-                let igrejaTransacao = 'estacao'; // Default
-               
-                // Tentar identificar igreja (usando lógica simplificada)
+                // Extrair chave PIX
                 let chavePix = '';
                 if (t.payment_method_id === 'pix' && t.point_of_interaction?.transaction_data?.qr_code) {
                     chavePix = extractPixKey(t.point_of_interaction.transaction_data.qr_code);
                 }
-               
-                igrejaTransacao = identificarIgrejaPorChavePix(chavePix);
-               
+                
+                // Identificar igreja
+                let igrejaTransacao = identificarIgrejaPorChavePix(chavePix);
+                
+                // Verificar external_reference
+                if (t.external_reference) {
+                    const refLower = t.external_reference.toLowerCase();
+                    if (refLower.includes('inga')) {
+                        igrejaTransacao = 'inga';
+                    } else if (refLower.includes('zona-leste') || refLower.includes('zonaleste')) {
+                        igrejaTransacao = 'zona-leste';
+                    } else if (refLower.includes('estacao') || refLower.includes('estação')) {
+                        igrejaTransacao = 'estacao';
+                    }
+                }
+                
                 // Se filtro não for 'todas' e igreja não bater, pula
                 if (igrejaFiltro !== 'todas' && igrejaTransacao !== igrejaFiltro) return;
-               
+                
                 // Só processar aprovados
                 if (t.status !== 'approved') return;
-               
+                
                 const data = new Date(t.date_created);
                 const mesIndex = data.getMonth(); // 0 a 11
                 const valor = t.transaction_amount || 0;
-               
+                
                 // Verificar se é entrada ou saída
-                // Simplificação: regular_payment e accredited são entradas
                 if (t.status_detail === 'accredited' || t.operation_type === 'regular_payment') {
                     dadosMeses[mesIndex].entradas += valor;
                 } else {
                     dadosMeses[mesIndex].saidas += valor;
                 }
             });
-           
+            
             atualizarTabelaHistorico(dadosMeses);
             atualizarGrafico(dadosMeses);
             historicoLoading.style.display = 'none';
             historicoCount.textContent = 'Dados consolidados com sucesso.';
         }
-       
+        
         function atualizarTabelaHistorico(dadosMeses) {
             const tbodyHist = tabelaHistorico.querySelector('tbody');
             tbodyHist.innerHTML = '';
-           
+            
             const nomesMeses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-           
+            
             let acumulado = 0;
-           
+            
             dadosMeses.forEach((dados, index) => {
                 const saldoMes = dados.entradas - dados.saidas;
                 acumulado += saldoMes;
-               
+                
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${nomesMeses[index]}</strong></td>
@@ -1780,25 +1740,25 @@
                 tbodyHist.appendChild(tr);
             });
         }
-       
+        
         function atualizarGrafico(dadosMeses) {
             graficoBarras.innerHTML = '';
-           
+            
             // Encontrar o maior valor para escala
             let maxValor = 0;
             dadosMeses.forEach(d => {
                 if (d.entradas > maxValor) maxValor = d.entradas;
             });
-           
+            
             if (maxValor === 0) maxValor = 100; // Evitar divisão por zero
-           
+            
             const mesesSiglas = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-           
+            
             dadosMeses.forEach((dados, index) => {
                 const alturaPercent = (dados.entradas / maxValor) * 100;
                 // Altura mínima visual de 2px
                 const alturaReal = Math.max(alturaPercent, 1);
-               
+                
                 const barraContainer = document.createElement('div');
                 barraContainer.style.display = 'flex';
                 barraContainer.style.flexDirection = 'column';
@@ -1806,7 +1766,7 @@
                 barraContainer.style.height = '100%';
                 barraContainer.style.justifyContent = 'flex-end';
                 barraContainer.style.width = '7%';
-               
+                
                 // Barra
                 const barra = document.createElement('div');
                 barra.style.width = '100%';
@@ -1815,27 +1775,28 @@
                 barra.style.borderRadius = '3px 3px 0 0';
                 barra.style.transition = 'height 1s';
                 barra.title = `Entradas: ${formatarValor(dados.entradas)}`;
-               
+                
                 // Label
                 const label = document.createElement('div');
                 label.textContent = mesesSiglas[index];
                 label.style.fontSize = '0.7rem';
                 label.style.marginTop = '5px';
                 label.style.color = 'var(--secondary)';
-               
+                
                 barraContainer.appendChild(barra);
                 barraContainer.appendChild(label);
-               
+                
                 graficoBarras.appendChild(barraContainer);
             });
         }
+        
         // Event listeners
         loginForm.addEventListener('submit', function(e) {
             e.preventDefault();
-           
+            
             const usuario = usernameInput.value.trim();
             const senha = passwordInput.value;
-           
+            
             if (fazerLogin(usuario, senha)) {
                 loginError.style.display = 'none';
                 loginScreen.style.display = 'none';
@@ -1847,19 +1808,20 @@
                 passwordInput.focus();
             }
         });
+        
         aplicarFiltrosBtn.addEventListener('click', aplicarFiltros);
         limparFiltrosBtn.addEventListener('click', limparFiltros);
         atualizarDadosBtn.addEventListener('click', buscarMovimentos);
         exportarDadosBtn.addEventListener('click', exportarDados);
         adicionarChaveBtn.addEventListener('click', window.adicionarChavePix);
-        buscarChavesApiBtn.addEventListener('click', buscarChavesPixDaAPI);
         aplicarFiltroHistoricoBtn.addEventListener('click', carregarHistoricoMensal);
-       
+        
         novaChaveInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 window.adicionarChavePix();
             }
         });
+        
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('church-btn')) {
                 document.querySelectorAll('.church-btn').forEach(b => b.classList.remove('active'));
@@ -1868,6 +1830,7 @@
                 aplicarFiltros();
             }
         });
+        
         doadorInput.addEventListener('input', aplicarFiltros);
         tipoSelect.addEventListener('change', aplicarFiltros);
         tipoDoacaoSelect.addEventListener('change', aplicarFiltros);
@@ -1875,6 +1838,7 @@
         metodoPagamentoSelect.addEventListener('change', aplicarFiltros);
         igrejaSelect.addEventListener('change', aplicarFiltros);
         chavePixSelect.addEventListener('change', aplicarFiltros);
+        
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 const tabId = tab.getAttribute('data-tab');
@@ -1882,11 +1846,12 @@
                 tabContents.forEach(c => c.classList.remove('active'));
                 tab.classList.add('active');
                 document.getElementById(`${tabId}-content`).classList.add('active');
-               
+                
                 if (tabId === 'historico') carregarHistoricoMensal();
                 else if (tabId === 'chaves-pix') carregarChavesPixDoLocalStorage();
             });
         });
+        
         document.addEventListener('DOMContentLoaded', () => {
             usernameInput.focus();
         });
