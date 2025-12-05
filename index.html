@@ -603,6 +603,15 @@
                             </select>
                         </div>
                         <div class="filter-group">
+                            <label for="minha-chave-pix">Minha Chave PIX</label>
+                            <select id="minha-chave-pix">
+                                <option value="">Todas</option>
+                                <!-- As opções serão preenchidas dinamicamente via JavaScript -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-row">
+                        <div class="filter-group">
                             <label for="igreja">Igreja</label>
                             <select id="igreja">
                                 <option value="">Todas</option>
@@ -775,6 +784,7 @@
         const valorInput = document.getElementById('valor');
         const statusSelect = document.getElementById('status');
         const metodoPagamentoSelect = document.getElementById('metodo-pagamento');
+        const minhaChavePixSelect = document.getElementById('minha-chave-pix');
         const igrejaSelect = document.getElementById('igreja');
         const transactionsCount = document.querySelector('.transactions-count');
         const loadingDiv = document.querySelector('.loading');
@@ -860,6 +870,27 @@
             }
         }
 
+        // Atualizar o select de filtro com as chaves PIX encontradas
+        function atualizarFiltroChavesPix() {
+            console.log('Atualizando filtro de chaves Pix com:', minhasChavesPix);
+            
+            if (minhaChavePixSelect) {
+                minhaChavePixSelect.innerHTML = '<option value="">Todas</option>';
+                
+                if (minhasChavesPix && minhasChavesPix.length > 0) {
+                    minhasChavesPix.forEach(chave => {
+                        const option = document.createElement('option');
+                        option.value = chave.chave;
+                        option.textContent = `${chave.chave} (${chave.tipo})`;
+                        minhaChavePixSelect.appendChild(option);
+                    });
+                    console.log('Filtro de chaves Pix atualizado com sucesso');
+                } else {
+                    console.warn('Nenhuma chave Pix encontrada para preencher o filtro');
+                }
+            }
+        }
+
         // 1. Buscar SUAS chaves PIX cadastradas (Lógica original + Fallback)
         async function buscarMinhasChavesPix() {
             try {
@@ -919,28 +950,6 @@
                 ];
                 atualizarFiltroChavesPix();
                 return minhasChavesPix;
-            }
-        }
-
-        // Atualizar o select de filtro (Mantido do original)
-        function atualizarFiltroChavesPix() {
-            console.log('Atualizando filtro de chaves Pix com:', minhasChavesPix);
-            // Adaptação para o novo contexto
-            const minhaChavePixSelect = document.getElementById('minha-chave-pix');
-            if (minhaChavePixSelect) {
-                minhaChavePixSelect.innerHTML = '<option value="">Todas</option>';
-                
-                if (minhasChavesPix && minhasChavesPix.length > 0) {
-                    minhasChavesPix.forEach(chave => {
-                        const option = document.createElement('option');
-                        option.value = chave.chave;
-                        option.textContent = `${chave.chave} (${chave.tipo})`;
-                        minhaChavePixSelect.appendChild(option);
-                    });
-                    console.log('Filtro de chaves Pix atualizado com sucesso');
-                } else {
-                    console.warn('Nenhuma chave Pix encontrada para preencher o filtro');
-                }
             }
         }
 
@@ -1256,7 +1265,7 @@
             transactionsCount.textContent = `Mostrando ${transacoes.length} de ${allTransactions.length} doações`;
         }
 
-        // Aplicar filtros (Lógica completa mantida)
+        // Aplicar filtros (Lógica completa mantida) - ATUALIZADA COM NOVO FILTRO
         function aplicarFiltros() {
             let transacoesFiltradas = [...allTransactions];
             
@@ -1301,6 +1310,24 @@
                 );
             }
             
+            // NOVO FILTRO: Por minha chave PIX
+            if (minhaChavePixSelect && minhaChavePixSelect.value) {
+                const chaveSelecionada = minhaChavePixSelect.value;
+                transacoesFiltradas = transacoesFiltradas.filter(t => {
+                    // Verifica se a transação tem alguma chave PIX relacionada
+                    if (t.metodoPagamento === 'PIX' && t.tipo === 'credit') {
+                        // Se tiver informação de qual chave foi usada, filtra por ela
+                        if (t.minhaChaveUtilizada) {
+                            return t.minhaChaveUtilizada.chave === chaveSelecionada;
+                        }
+                        // Caso contrário, verifica se a chave aparece em outros campos
+                        return t.chavePix === chaveSelecionada || 
+                               (t.descricao && t.descricao.includes(chaveSelecionada));
+                    }
+                    return false;
+                });
+            }
+            
             if (igrejaSelect.value) {
                 transacoesFiltradas = transacoesFiltradas.filter(t => 
                     t.igreja === igrejaSelect.value
@@ -1321,6 +1348,7 @@
             valorInput.value = '';
             statusSelect.value = '';
             metodoPagamentoSelect.value = '';
+            if (minhaChavePixSelect) minhaChavePixSelect.value = '';
             igrejaSelect.value = '';
             
             // Reseta datas para o padrão (30 dias)
@@ -1336,7 +1364,7 @@
             atualizarContadores();
         }
 
-        // Exportar dados
+        // Exportar dados - ATUALIZADA COM INFORMAÇÃO DE CHAVE PIX
         function exportarDados() {
             const transacoesParaExportar = filteredTransactions.length > 0 ? filteredTransactions : allTransactions;
             
@@ -1345,10 +1373,14 @@
                 return;
             }
             
-            // Criar CSV
-            let csv = 'Data,Doador,Valor,Tipo,Igreja,Método Pagamento,Status,Observações\n';
+            // Criar CSV - Adicionar coluna "Chave PIX Utilizada"
+            let csv = 'Data,Doador,Valor,Tipo,Igreja,Método Pagamento,Status,Chave PIX Utilizada,Observações\n';
             
             transacoesParaExportar.forEach(transacao => {
+                const chavePixInfo = transacao.minhaChaveUtilizada ? 
+                                    transacao.minhaChaveUtilizada.chave : 
+                                    (transacao.chavePix || 'N/A');
+                
                 const linha = [
                     transacao.dataHora.split(' - ')[0],
                     `"${transacao.doador}"`,
@@ -1357,6 +1389,7 @@
                     transacao.igreja === 'inga' ? 'Verbo da Vida Ingá' : (transacao.igreja === 'zona-leste' ? 'Verbo da Vida Zona Leste' : 'Não Identificada'),
                     transacao.metodoPagamento,
                     transacao.situacao,
+                    `"${chavePixInfo}"`,
                     `"${transacao.observacoes || ''}"`
                 ].join(',');
                 
@@ -1613,6 +1646,9 @@
         tipoDoacaoSelect.addEventListener('change', aplicarFiltros);
         statusSelect.addEventListener('change', aplicarFiltros);
         metodoPagamentoSelect.addEventListener('change', aplicarFiltros);
+        if (minhaChavePixSelect) {
+            minhaChavePixSelect.addEventListener('change', aplicarFiltros);
+        }
         igrejaSelect.addEventListener('change', aplicarFiltros);
 
         // NOVOS EVENT LISTENERS PARA AS ABAS
@@ -1644,4 +1680,3 @@
     </script>
 </body>
 </html>
-
