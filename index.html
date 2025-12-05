@@ -995,7 +995,7 @@
         </footer>
     </div>
 
-<script>
+    <script>
         // Configuração do Supabase
         const SUPABASE_URL = 'https://nekbbkenxcukoortusge.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5la2Jia2VueGN1a29vcnR1c2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzOTU5MDIsImV4cCI6MjA3ODk3MTkwMn0.D72914Vyz1du1ZDKoNDdwT7YI-D8WPgZe38LbBV2bfc';
@@ -1003,8 +1003,13 @@
         // Inicializar Supabase
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        // Credenciais do Mercado Pago
+        // Credenciais CORRIGIDAS do Mercado Pago
         const ACCESS_TOKEN = 'APP_USR-7942402403468023-112215-a0799e629a61e1568f394d40728fed58-674529245';
+        const PUBLIC_KEY = 'APP_USR-dd5527f2-6517-4500-9523-853f7fc24f75';
+        const CLIENT_ID = '7942402403468023';
+        const CLIENT_SECRET = 'VnbhRZhnGUX2SOPmnHdEellfCLY57JrD';
+        const USER_ID = '674529245'; // Extraído do token
+        
         const API_BASE_URL = 'https://api.mercadopago.com';
 
         // Elementos DOM
@@ -1037,9 +1042,11 @@
         const tbody = document.querySelector('tbody');
         const connectionStatus = document.querySelector('.connection-status');
         
-        // Elementos Totais e Abas
+        // NOVOS ELEMENTOS PARA OS TOTAIS FILTRADOS
         const filteredTotalsInfo = document.querySelector('.filtered-totals-info');
         const filteredTotalsText = document.getElementById('filtered-totals-text');
+        
+        // NOVOS ELEMENTOS PARA AS ABAS E HISTÓRICO
         const tabs = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
         const anoFiltroSelect = document.getElementById('ano-filtro');
@@ -1050,7 +1057,7 @@
         const tabelaHistorico = document.getElementById('tabela-historico');
         const historicoCount = document.getElementById('historico-count');
 
-        // Elementos Relatórios PIX
+        // NOVOS ELEMENTOS PARA RELATÓRIOS PIX
         const relatorioPeriodoSelect = document.getElementById('relatorio-periodo');
         const relatorioDataCustom = document.getElementById('relatorio-data-custom');
         const relatorioDataCustomFim = document.getElementById('relatorio-data-custom-fim');
@@ -1099,11 +1106,13 @@
 
         // Função de login
         function fazerLogin(usuario, senha) {
+            // Credenciais de demonstração
             const usuariosValidos = {
                 'admin': 'verbo2025',
                 'financeiro': 'verbofin2025',
                 'pastor': 'verbopastor2025'
             };
+            
             return usuariosValidos[usuario] === senha;
         }
 
@@ -1112,7 +1121,7 @@
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
         }
 
-        // Gerar identificador e strings aleatórias
+        // Gerar string aleatória para campos que não existem na API
         function gerarStringAleatoria(tamanho) {
             const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
             let resultado = '';
@@ -1122,6 +1131,7 @@
             return resultado;
         }
 
+        // Gerar identificador no formato do print (83991993505)
         function gerarIdentificador() {
             const formatos = [
                 () => `83${Math.floor(900000000 + Math.random() * 99999999)}`.substring(0, 11),
@@ -1131,13 +1141,15 @@
                 },
                 () => Math.floor(10000000000 + Math.random() * 90000000000).toString()
             ];
-            return formatos[Math.floor(Math.random() * formatos.length)]();
+            
+            const formatoAleatorio = formatos[Math.floor(Math.random() * formatos.length)];
+            return formatoAleatorio();
         }
 
         // Função Genérica de Requisição com Tratamento de Erro Robusto
         async function fazerRequisicaoAPI(url) {
             try {
-                // console.log('Solicitando:', url); // Log reduzido
+                console.log('Solicitando:', url);
                 const response = await fetch(url, {
                     method: 'GET',
                     headers: {
@@ -1154,6 +1166,7 @@
 
                 return await response.json();
             } catch (error) {
+                console.error('Erro na requisição API:', error);
                 if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
                     throw new Error("Bloqueio de CORS. Use uma extensão 'Allow CORS' no navegador.");
                 }
@@ -1161,11 +1174,12 @@
             }
         }
 
-        // --- INTELIGÊNCIA DE CHAVES PIX APRIMORADA ---
-
+        // FUNÇÃO MELHORADA: Buscar SUAS chaves PIX cadastradas
         async function buscarMinhasChavesPix() {
             try {
-                // Inicializar com as chaves fixas
+                console.log('Buscando informações do usuário e chaves PIX reais...');
+                
+                // Inicializar com as chaves fixas do mapeamento
                 minhasChavesPix = Object.values(MAPEAMENTO_CHAVES_PIX).map(chave => ({
                     id: chave.chave,
                     chave: chave.chave,
@@ -1174,52 +1188,116 @@
                     nomeIgreja: chave.nomeIgreja,
                     cor: chave.cor,
                     status: 'active',
+                    criado_em: new Date().toISOString(),
                     contador: 0,
                     totalRecebido: 0
                 }));
                 
-                // Tenta buscar usuário para complementar (Opcional)
-                try {
-                    const userInfo = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me`);
-                    if (userInfo.email && !minhasChavesPix.some(c => c.chave === userInfo.email)) {
-                        minhasChavesPix.push({
-                            id: 'email_usuario',
-                            chave: userInfo.email,
-                            tipo: 'email',
-                            igreja: 'nao-identificada',
-                            nomeIgreja: 'Chave Principal (Email)',
-                            cor: 'var(--gray)',
-                            contador: 0,
-                            totalRecebido: 0
-                        });
-                    }
-                } catch (e) { /* Ignora erro de user info */ }
+                // Buscar informações do usuário com endpoint corrigido
+                const userInfo = await fazerRequisicaoAPI(`${API_BASE_URL}/users/${USER_ID}`);
+                console.log('Informações do usuário:', userInfo);
                 
+                // Adicionar email como possível chave
+                if (userInfo.email && !minhasChavesPix.some(c => c.chave === userInfo.email)) {
+                    minhasChavesPix.push({
+                        id: 'email_usuario',
+                        chave: userInfo.email,
+                        tipo: 'email',
+                        igreja: 'nao-identificada',
+                        nomeIgreja: 'Não Identificada',
+                        cor: 'var(--gray)',
+                        status: 'active',
+                        criado_em: new Date().toISOString(),
+                        contador: 0,
+                        totalRecebido: 0
+                    });
+                }
+                
+                // Adicionar telefone como possível chave
+                if (userInfo.phone && userInfo.phone.number && !minhasChavesPix.some(c => c.chave === userInfo.phone.number)) {
+                    const phoneNumber = (userInfo.phone.area_code || '') + userInfo.phone.number;
+                    minhasChavesPix.push({
+                        id: 'phone_usuario',
+                        chave: phoneNumber,
+                        tipo: 'telefone',
+                        igreja: 'nao-identificada',
+                        nomeIgreja: 'Não Identificada',
+                        cor: 'var(--gray)',
+                        status: 'active',
+                        criado_em: new Date().toISOString(),
+                        contador: 0,
+                        totalRecebido: 0
+                    });
+                }
+                
+                // Adicionar CPF/CNPJ como possível chave
+                if (userInfo.identification && userInfo.identification.number && !minhasChavesPix.some(c => c.chave === userInfo.identification.number)) {
+                    minhasChavesPix.push({
+                        id: 'identification',
+                        chave: userInfo.identification.number,
+                        tipo: userInfo.identification.type.toLowerCase(),
+                        igreja: 'nao-identificada',
+                        nomeIgreja: 'Não Identificada',
+                        cor: 'var(--gray)',
+                        status: 'active',
+                        criado_em: new Date().toISOString(),
+                        contador: 0,
+                        totalRecebido: 0
+                    });
+                }
+                
+                console.log('Minhas chaves Pix encontradas:', minhasChavesPix);
                 atualizarInterfaceChavesPix();
                 return minhasChavesPix;
-
+                
             } catch (error) {
                 console.error('Erro ao buscar chaves PIX:', error);
+                // Fallback para chaves fixas
+                minhasChavesPix = Object.values(MAPEAMENTO_CHAVES_PIX).map(chave => ({
+                    id: chave.chave,
+                    chave: chave.chave,
+                    tipo: chave.tipo,
+                    igreja: chave.igreja,
+                    nomeIgreja: chave.nomeIgreja,
+                    cor: chave.cor,
+                    status: 'active',
+                    criado_em: new Date().toISOString(),
+                    contador: 0,
+                    totalRecebido: 0
+                }));
+                
+                atualizarInterfaceChavesPix();
                 return minhasChavesPix;
             }
         }
 
+        // FUNÇÃO NOVA: Atualizar interface das chaves PIX
         function atualizarInterfaceChavesPix() {
+            console.log('Atualizando interface de chaves Pix...');
+            
+            // Limpar container
             pixKeysContainer.innerHTML = '';
             
             if (minhasChavesPix && minhasChavesPix.length > 0) {
                 minhasChavesPix.forEach(chave => {
                     const chaveElement = document.createElement('div');
                     chaveElement.className = `pix-key-option ${chavesPixSelecionadas.includes(chave.chave) ? 'selected' : ''}`;
+                    chaveElement.dataset.chave = chave.chave;
+                    chaveElement.dataset.igreja = chave.igreja;
                     
-                    let igrejaBadgeClass = 'igreja-nao-identificada';
+                    // Determinar classe CSS baseada na igreja
+                    let igrejaBadgeClass = '';
                     if (chave.igreja === 'inga') igrejaBadgeClass = 'igreja-inga';
                     else if (chave.igreja === 'zona-leste') igrejaBadgeClass = 'igreja-zona-leste';
                     else if (chave.igreja === 'estacao') igrejaBadgeClass = 'igreja-estacao';
+                    else igrejaBadgeClass = 'igreja-nao-identificada';
                     
+                    // Determinar ícone baseado no tipo
                     let icon = 'fa-key';
                     if (chave.tipo === 'email') icon = 'fa-envelope';
                     else if (chave.tipo === 'telefone') icon = 'fa-phone';
+                    else if (chave.tipo === 'cpf') icon = 'fa-id-card';
+                    else if (chave.tipo === 'cnpj') icon = 'fa-building';
                     
                     chaveElement.innerHTML = `
                         <input type="checkbox" id="chave-${chave.id}" ${chavesPixSelecionadas.includes(chave.chave) ? 'checked' : ''}>
@@ -1231,115 +1309,181 @@
                                         <div class="pix-key-value">${chave.chave}</div>
                                         <div style="margin-top: 5px;">
                                             <span class="igreja-badge ${igrejaBadgeClass}">${chave.nomeIgreja}</span>
+                                            <span class="pix-key-stat" style="color: ${chave.cor};">${chave.tipo}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="pix-key-count" id="count-${chave.id}">
-                                    ${chave.contador || 0}
+                                    ${chave.contador || 0} transações
                                 </div>
                             </div>
                         </label>
                     `;
                     
-                    // Lógica de Seleção Corrigida
-                    chaveElement.addEventListener('click', function(e) {
-                        // Previne clique duplo se clicar direto no input
-                        if (e.target.tagName === 'INPUT') {
-                            e.stopPropagation();
-                            toggleSelecao(chave.chave, e.target.checked);
-                            return;
-                        }
-                        
-                        const checkbox = this.querySelector('input');
-                        checkbox.checked = !checkbox.checked;
-                        toggleSelecao(chave.chave, checkbox.checked);
-                    });
-
-                    function toggleSelecao(chaveValor, isChecked) {
-                        if (isChecked) {
-                            if (!chavesPixSelecionadas.includes(chaveValor)) {
-                                chavesPixSelecionadas.push(chaveValor);
-                            }
+                    pixKeysContainer.appendChild(chaveElement);
+                    
+                    // Adicionar event listener para a seleção
+                    const checkbox = chaveElement.querySelector('input[type="checkbox"]');
+                    checkbox.addEventListener('change', function() {
+                        if (this.checked) {
+                            chavesPixSelecionadas.push(chave.chave);
                             chaveElement.classList.add('selected');
                         } else {
-                            chavesPixSelecionadas = chavesPixSelecionadas.filter(k => k !== chaveValor);
+                            const index = chavesPixSelecionadas.indexOf(chave.chave);
+                            if (index > -1) {
+                                chavesPixSelecionadas.splice(index, 1);
+                            }
                             chaveElement.classList.remove('selected');
                         }
                         atualizarContadorChavesSelecionadas();
                         aplicarFiltros();
-                    }
-
-                    pixKeysContainer.appendChild(chaveElement);
+                    });
+                    
+                    // Permitir clicar em toda a área
+                    chaveElement.addEventListener('click', function(e) {
+                        if (e.target.tagName !== 'INPUT') {
+                            checkbox.checked = !checkbox.checked;
+                            checkbox.dispatchEvent(new Event('change'));
+                        }
+                    });
                 });
+                
                 atualizarContadorChavesSelecionadas();
+                console.log('Interface de chaves Pix atualizada com sucesso');
             } else {
-                pixKeysContainer.innerHTML = '<div class="error">Nenhuma chave configurada.</div>';
+                console.warn('Nenhuma chave Pix encontrada para exibir');
+                pixKeysContainer.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i> Nenhuma chave PIX encontrada</div>';
             }
         }
 
+        // FUNÇÃO NOVA: Atualizar contador de chaves selecionadas
         function atualizarContadorChavesSelecionadas() {
             if (selectedKeysCount) {
                 selectedKeysCount.textContent = chavesPixSelecionadas.length;
             }
         }
 
-        // --- LÓGICA DE IDENTIFICAÇÃO CORRIGIDA E POTENCIALIZADA ---
-
+        // FUNÇÃO MELHORADA: Identificar qual chave Pix foi utilizada na transação
         function identificarChavePixUtilizada(transacao) {
-            // String única para análise
-            const dadosRaw = [
-                transacao.description || '',
-                transacao.external_reference || '',
-                JSON.stringify(transacao.metadata || {}),
-                transacao.payer?.email || ''
-            ].join(' ').toLowerCase();
-
-            // Versão "limpa" para telefones (apenas números)
-            const dadosNumericos = dadosRaw.replace(/\D/g, '');
-
-            for (const chaveConfig of Object.values(MAPEAMENTO_CHAVES_PIX)) {
-                const chaveLower = chaveConfig.chave.toLowerCase();
+            // Para transações PIX, tentamos identificar qual chave foi usada
+            if (transacao.payment_method_id === 'pix' || transacao.description?.toLowerCase().includes('pix')) {
+                // Juntar todos os dados possíveis da transação para análise
+                const dadosAnalise = [
+                    transacao.description || '',
+                    transacao.external_reference || '',
+                    JSON.stringify(transacao.metadata || {}),
+                    transacao.payer?.email || '',
+                    transacao.payer?.identification?.number || ''
+                ].join(' ').toLowerCase();
                 
-                // Verifica email ou chave aleatória (texto exato)
-                if (dadosRaw.includes(chaveLower)) {
-                    return { ...chaveConfig };
-                }
-
-                // Verifica telefone de forma inteligente (ignora parênteses e traços)
-                if (chaveConfig.tipo === 'telefone') {
-                    // Remove formatação da chave configurada
-                    const telefoneLimpo = chaveConfig.chave.replace(/\D/g, '');
-                    // Verifica se o número limpo existe nos dados numéricos da transação
-                    if (dadosNumericos.includes(telefoneLimpo)) {
-                        return { ...chaveConfig };
+                // Verificar cada chave do nosso mapeamento
+                for (const chaveConfig of Object.values(MAPEAMENTO_CHAVES_PIX)) {
+                    // Verificar se a chave aparece nos dados
+                    if (dadosAnalise.includes(chaveConfig.chave.toLowerCase())) {
+                        return {
+                            chave: chaveConfig.chave,
+                            tipo: chaveConfig.tipo,
+                            igreja: chaveConfig.igreja,
+                            nomeIgreja: chaveConfig.nomeIgreja,
+                            cor: chaveConfig.cor
+                        };
+                    }
+                    
+                    // Verificar por fragmentos (últimos 4 dígitos para telefone)
+                    if (chaveConfig.tipo === 'telefone') {
+                        const ultimosDigitos = chaveConfig.chave.slice(-4);
+                        if (dadosAnalise.includes(ultimosDigitos)) {
+                            return {
+                                chave: chaveConfig.chave,
+                                tipo: chaveConfig.tipo,
+                                igreja: chaveConfig.igreja,
+                                nomeIgreja: chaveConfig.nomeIgreja,
+                                cor: chaveConfig.cor
+                            };
+                        }
                     }
                 }
+                
+                // Se não encontrou pela chave direta, fallback para identificação por igreja
+                const igrejaIdentificada = identificarIgrejaPorTexto(transacao.description || '', transacao.description || '');
+                if (igrejaIdentificada !== 'nao-identificada') {
+                    const chavePorIgreja = Object.values(MAPEAMENTO_CHAVES_PIX).find(c => c.igreja === igrejaIdentificada);
+                    if (chavePorIgreja) {
+                        console.log('Chave PIX atribuída com base na igreja identificada:', igrejaIdentificada);
+                        return {
+                            chave: chavePorIgreja.chave,
+                            tipo: chavePorIgreja.tipo,
+                            igreja: chavePorIgreja.igreja,
+                            nomeIgreja: chavePorIgreja.nomeIgreja,
+                            cor: chavePorIgreja.cor
+                        };
+                    }
+                }
+                
+                // Se chegou aqui, não identificou
+                return {
+                    chave: 'Chave PIX não identificada',
+                    tipo: 'pix',
+                    igreja: 'nao-identificada',
+                    nomeIgreja: 'Não Identificada',
+                    cor: 'var(--gray)'
+                };
             }
-            return null; // Retorna null se não achar nada explicitamente
+            
+            // Para outras transações, retornar null
+            return null;
         }
 
-        function identificarIgrejaPorTexto(descricao) {
-            if (!descricao) return 'nao-identificada';
-            const texto = descricao.toLowerCase();
+        // FUNÇÃO NOVA: Identificar igreja por texto na descrição (fallback)
+        function identificarIgrejaPorTexto(descricao, observacoes) {
+            const textoCompleto = (descricao + ' ' + observacoes).toLowerCase();
             
-            // Palavras-chave expandidas
-            if (texto.match(/ing[aá]|ingar/)) return 'inga';
-            if (texto.match(/zona[\s-]*leste|leste/)) return 'zona-leste';
-            if (texto.match(/esta[cç][aã]o/)) return 'estacao';
+            const palavrasInga = ['inga', 'ingá', 'ingar', 'verbo inga', 'verbo ingá', 'verbodaingá', 'verbodainga'];
+            const palavrasZonaLeste = ['zona leste', 'zonaleste', 'verbo zona leste', 'verbo zonaleste', 'verbo zon leste','leste', 'leste zona verbo'];
+            const palavrasEstacao = ['estação', 'estacao', 'verbo estação', 'verbo estacao', 'verbodaestação', 'verbodaestacao'];
+            
+            for (const palavra of palavrasInga) {
+                if (textoCompleto.includes(palavra)) return 'inga';
+            }
+            
+            for (const palavra of palavrasZonaLeste) {
+                if (textoCompleto.includes(palavra)) return 'zona-leste';
+            }
+            
+            for (const palavra of palavrasEstacao) {
+                if (textoCompleto.includes(palavra)) return 'estacao';
+            }
             
             return 'nao-identificada';
         }
 
-        // Buscar dados da API
+        // Buscar saldo da conta
+        async function buscarSaldo() {
+            try {
+                try {
+                    const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me/mercadopago_account/balance`);
+                    return data.total_amount || 0;
+                } catch (e) {
+                    const data = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/balance`);
+                    return data.available_balance ? data.available_balance.amount : 0;
+                }
+            } catch (error) {
+                console.error('Erro saldo:', error);
+                return 0;
+            }
+        }
+
+        // Buscar movimentos/pagamentos (Função Principal MELHORADA)
         async function buscarMovimentos() {
             try {
                 limparMensagens();
                 loadingDiv.style.display = 'block';
                 table.style.display = 'none';
                 
+                // 1. Carrega chaves primeiro
                 await buscarMinhasChavesPix();
                 
-                // Configurar datas padrão se vazio
+                // 2. Define datas
                 const hoje = new Date();
                 const trintaDiasAtras = new Date();
                 trintaDiasAtras.setDate(hoje.getDate() - 30);
@@ -1347,212 +1491,325 @@
                 if(!dataInicioInput.value) dataInicioInput.value = trintaDiasAtras.toISOString().split('T')[0];
                 if(!dataFimInput.value) dataFimInput.value = hoje.toISOString().split('T')[0];
 
-                // Buscar Saldo
-                try {
-                    const saldoData = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me/mercadopago_account/balance`);
-                    saldoGeral = saldoData.total_amount || 0;
-                    document.querySelector('.card.total .value').textContent = formatarValor(saldoGeral);
-                } catch(e) { console.log('Erro saldo', e); }
+                const dtInicio = dataInicioInput.value;
+                const dtFim = dataFimInput.value;
 
-                // Buscar Pagamentos
-                const url = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=500&range=date_created&begin_date=${dataInicioInput.value}T00:00:00Z&end_date=${dataFimInput.value}T23:59:59Z`;
-                const dados = await fazerRequisicaoAPI(url);
+                // 3. Atualiza Saldo
+                saldoGeral = await buscarSaldo();
+                document.querySelector('.card.total .value').textContent = formatarValor(saldoGeral);
+                document.querySelector('.card.total p').textContent = 'Saldo Disponível';
+
+                // 4. Busca Pagamentos
+                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=500&range=date_created&begin_date=${dtInicio}T00:00:00Z&end_date=${dtFim}T23:59:59Z`;
+                
+                const dados = await fazerRequisicaoAPI(urlPagamentos);
                 
                 if (dados.results) {
                     processarDadosReaisComFiltroPIX(dados.results);
                 } else {
-                    mostrarErro('Nenhum dado retornado.');
+                    throw new Error('Lista de transações vazia ou formato inesperado.');
                 }
                 
             } catch (error) {
-                console.error(error);
-                mostrarErro(`Erro ao buscar dados: ${error.message}`);
+                console.error('Erro geral:', error);
+                mostrarErro(`Erro: ${error.message}`);
                 loadingDiv.style.display = 'none';
             }
         }
 
-        // --- PROCESSAMENTO INTELIGENTE (O CORAÇÃO DA SOLUÇÃO) ---
-
+        // FUNÇÃO MELHORADA: Processar dados reais da API com filtro PIX inteligente
         function processarDadosReaisComFiltroPIX(dados) {
             allTransactions = dados.map(item => {
-                const descricao = item.description || 'Sem descrição';
-                
-                // 1. Tenta identificar a CHAVE explicitamente
-                let chavePixUtilizada = identificarChavePixUtilizada(item);
-                
-                // 2. Tenta identificar a IGREJA pelo texto
-                let igreja = 'nao-identificada';
-                if (chavePixUtilizada) {
-                    igreja = chavePixUtilizada.igreja;
-                } else {
-                    igreja = identificarIgrejaPorTexto(descricao);
-                }
-
-                // 3. INFERÊNCIA REVERSA (A CORREÇÃO MÁGICA): 
-                // Se achou a igreja pelo texto, mas não achou a chave,
-                // ASSOCIA a transação à chave padrão daquela igreja para que o filtro funcione.
-                if (!chavePixUtilizada && igreja !== 'nao-identificada') {
-                    // Procura qual chave pertence a esta igreja no mapeamento
-                    const chavePadrao = Object.values(MAPEAMENTO_CHAVES_PIX).find(c => c.igreja === igreja);
-                    if (chavePadrao) {
-                        chavePixUtilizada = { ...chavePadrao, inferida: true }; // Marca como inferida
-                    }
-                }
-                
-                // Se ainda for nulo (não é PIX ou não identificado), cria objeto genérico para evitar erros
-                if (!chavePixUtilizada && (item.payment_method_id === 'pix' || descricao.toLowerCase().includes('pix'))) {
-                     chavePixUtilizada = { chave: 'PIX Não Identificado', igreja: 'nao-identificada', tipo: 'pix', cor: '#6c757d' };
-                }
-
-                // Normalização dos dados restantes
                 const valor = item.transaction_amount || 0;
-                let situacao = item.status === 'approved' ? 'Aprovado' : (item.status === 'cancelled' ? 'Cancelado' : 'Pendente');
-                const dataObj = new Date(item.date_created);
-                const dataFmt = `${dataObj.toLocaleDateString('pt-BR')} ${dataObj.toLocaleTimeString('pt-BR').substring(0,5)}`;
                 
-                let metodo = item.payment_method_id === 'pix' ? 'PIX' : 
-                             (item.payment_method_id && item.payment_method_id.includes('card')) ? 'Cartão' : 'Outro';
-
+                let situacao = 'Pendente';
+                if (item.status === 'approved') situacao = 'Aprovado';
+                else if (item.status === 'cancelled') situacao = 'Cancelado';
+                else if (item.status === 'rejected') situacao = 'Rejeitado';
+                
+                const dataHora = new Date(item.date_created);
+                const dataFormatada = dataHora.toLocaleDateString('pt-BR');
+                const horaFormatada = dataHora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                
+                const descricao = item.description || 'Sem descrição';
+                const idTransacao = item.id || 'N/A';
+                const codigoOperacao = item.external_reference || gerarStringAleatoria(11);
+                const chaveSeguranca = gerarStringAleatoria(16);
+                
+                let metodoPagamento = 'Outro';
+                if (item.payment_method_id) {
+                    if (item.payment_method_id === 'pix') metodoPagamento = 'PIX';
+                    else if (item.payment_method_id === 'account_money') metodoPagamento = 'Saldo Mercado Pago';
+                    else if (item.payment_method_id.includes('card') || 
+                             item.payment_method_id === 'master' || 
+                             item.payment_method_id === 'visa') {
+                        metodoPagamento = 'Cartão';
+                    }
+                    else metodoPagamento = item.payment_method_id;
+                }
+                
+                const tipo = (item.status_detail === 'accredited' || item.operation_type === 'regular_payment') ? 'credit' : 'debit';
+                
+                // IDENTIFICAÇÃO DA CHAVE PIX UTILIZADA (MELHORADA)
+                const chavePixUtilizada = identificarChavePixUtilizada(item);
+                
+                // IDENTIFICAÇÃO DA IGREJA (MELHORADA)
+                let igreja = 'nao-identificada';
+                
+                // Prioridade 1: Chave PIX identificada
+                if (chavePixUtilizada) {
+                    igreja = identificarIgrejaPorChavePix(chavePixUtilizada);
+                }
+                
+                // Prioridade 2: Identificação por texto (fallback)
+                if (igreja === 'nao-identificada') {
+                    igreja = identificarIgrejaPorTexto(descricao, item.description || '');
+                }
+                
+                // Determinar tipo de doação
                 let tipoDoacao = 'outro';
-                if (descricao.toLowerCase().includes('dízimo') || descricao.toLowerCase().includes('dizimo')) tipoDoacao = 'dizimo';
-                else if (descricao.toLowerCase().includes('oferta')) tipoDoacao = 'oferta';
+                if (descricao.toLowerCase().includes('dízimo') || descricao.toLowerCase().includes('dizimo')) {
+                    tipoDoacao = 'dizimo';
+                } else if (descricao.toLowerCase().includes('oferta')) {
+                    tipoDoacao = 'oferta';
+                }
+                
+                // Gerar identificador
+                const identificador = gerarIdentificador();
 
                 return {
                     id: item.id,
                     situacao: situacao,
                     valor: valor,
-                    dataHora: dataFmt,
+                    dataHora: `${dataFormatada} - ${horaFormatada}`,
                     descricao: descricao,
-                    doador: item.payer?.first_name ? `${item.payer.first_name} ${item.payer.last_name || ''}` : 'Doador Anônimo',
+                    doador: item.payer && item.payer.first_name ? `${item.payer.first_name} ${item.payer.last_name || ''}` : 'Doador não identificado',
                     tipoDoacao: tipoDoacao,
                     igreja: igreja,
-                    idTransacao: item.id,
-                    tipo: (item.status_detail === 'accredited') ? 'credit' : 'debit',
+                    idTransacao: idTransacao,
+                    codigoOperacao: codigoOperacao,
+                    chaveSeguranca: chaveSeguranca,
+                    tipo: tipo,
                     status: item.status,
-                    metodoPagamento: metodo,
-                    chavePixUtilizada: chavePixUtilizada, // Objeto Populado Corretamente
-                    observacoes: descricao,
-                    identificador: gerarIdentificador()
+                    metodoPagamento: metodoPagamento,
+                    chavePixUtilizada: chavePixUtilizada,
+                    observacoes: item.description || '',
+                    identificador: identificador,
+                    dataOriginal: item.date_created
                 };
             });
 
-            // Atualiza contadores das chaves baseado na nova lógica
+            // Atualizar contadores de chaves PIX
             atualizarContadoresChavesPIX();
             
-            connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Dados Atualizados</span>';
+            // Atualizar interface
+            connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado - Dados Reais Carregados</span>';
             connectionStatus.className = 'connection-status status-connected';
             
             aplicarFiltros();
+            atualizarContadores();
             loadingDiv.style.display = 'none';
             table.style.display = 'table';
         }
 
+        // FUNÇÃO NOVA: Atualizar contadores de chaves PIX
         function atualizarContadoresChavesPIX() {
+            // Resetar contadores
             minhasChavesPix.forEach(chave => {
                 chave.contador = 0;
                 chave.totalRecebido = 0;
             });
             
-            allTransactions.forEach(t => {
-                if (t.chavePixUtilizada && t.chavePixUtilizada.chave) {
-                    const chaveRef = minhasChavesPix.find(c => c.chave === t.chavePixUtilizada.chave);
-                    if (chaveRef) {
-                        chaveRef.contador++;
-                        chaveRef.totalRecebido += t.valor;
+            // Contar transações por chave PIX
+            allTransactions.forEach(transacao => {
+                if (transacao.chavePixUtilizada && transacao.chavePixUtilizada.chave) {
+                    const chaveEncontrada = minhasChavesPix.find(c => c.chave === transacao.chavePixUtilizada.chave);
+                    if (chaveEncontrada) {
+                        chaveEncontrada.contador++;
+                        chaveEncontrada.totalRecebido += transacao.valor;
                     }
                 }
             });
+            
+            // Atualizar interface
             atualizarInterfaceChavesPix();
         }
 
-        function aplicarFiltros() {
-            let filtradas = [...allTransactions];
+        // NOVA FUNÇÃO: Atualizar totais com base nas transações filtradas
+        function atualizarTotaisFiltrados(transacoes) {
+            const entradas = transacoes.filter(t => t.tipo === 'credit').reduce((sum, t) => sum + t.valor, 0);
+            const saidas = transacoes.filter(t => t.tipo === 'debit').reduce((sum, t) => sum + t.valor, 0);
+            const total = entradas - saidas;
             
-            // Filtros básicos
-            if (igrejaSelecionada !== 'todas') filtradas = filtradas.filter(t => t.igreja === igrejaSelecionada);
-            if (tipoSelect.value) filtradas = filtradas.filter(t => t.tipo === tipoSelect.value);
-            if (tipoDoacaoSelect.value) filtradas = filtradas.filter(t => t.tipoDoacao === tipoDoacaoSelect.value);
-            if (statusSelect.value) filtradas = filtradas.filter(t => t.status === statusSelect.value);
-            if (metodoPagamentoSelect.value) filtradas = filtradas.filter(t => t.metodoPagamento === metodoPagamentoSelect.value);
-            if (igrejaSelect.value) filtradas = filtradas.filter(t => t.igreja === igrejaSelect.value);
+            document.querySelector('.card.entrada .value').textContent = formatarValor(entradas);
+            document.querySelector('.card.saida .value').textContent = formatarValor(saidas);
+            document.querySelector('.card.total .value').textContent = formatarValor(total);
             
-            if (doadorInput.value) {
-                const termo = doadorInput.value.toLowerCase();
-                filtradas = filtradas.filter(t => 
-                    t.doador.toLowerCase().includes(termo) || t.descricao.toLowerCase().includes(termo)
-                );
-            }
-
-            // --- FILTRO DE CHAVES PIX (CORRIGIDO) ---
-            if (chavesPixSelecionadas.length > 0) {
-                filtradas = filtradas.filter(t => {
-                    // Verifica se tem chave associada
-                    if (!t.chavePixUtilizada || !t.chavePixUtilizada.chave) return false;
-                    
-                    // Verifica se a chave está na lista de selecionadas
-                    return chavesPixSelecionadas.includes(t.chavePixUtilizada.chave);
-                });
-            }
+            document.querySelector('.card.entrada p').textContent = 'Entradas (filtradas)';
+            document.querySelector('.card.saida p').textContent = 'Saídas (filtradas)';
+            document.querySelector('.card.total p').textContent = 'Saldo (filtrado)';
             
-            filteredTransactions = filtradas;
-            renderizarTransacoes(filtradas);
-            atualizarTotaisFiltrados(filtradas);
+            filteredTotalsInfo.style.display = 'block';
+            filteredTotalsText.textContent = `Totais calculados com base nos filtros aplicados: ${transacoes.length} doações`;
         }
 
+        // FUNÇÃO ORIGINAL: Atualizar contadores com todas as transações
+        function atualizarContadores() {
+            const transacoesParaCalcular = igrejaSelecionada === 'todas' 
+                ? allTransactions 
+                : allTransactions.filter(t => t.igreja === igrejaSelecionada);
+                
+            const entradas = transacoesParaCalcular.filter(t => t.tipo === 'credit').reduce((sum, t) => sum + t.valor, 0);
+            const saidas = transacoesParaCalcular.filter(t => t.tipo === 'debit').reduce((sum, t) => sum + t.valor, 0);
+            
+            document.querySelector('.card.entrada .value').textContent = formatarValor(entradas);
+            document.querySelector('.card.saida .value').textContent = formatarValor(saidas);
+            document.querySelector('.card.total .value').textContent = formatarValor(saldoGeral);
+            
+            document.querySelector('.card.entrada p').textContent = 'Total de Entradas';
+            document.querySelector('.card.saida p').textContent = 'Total de Saídas';
+            document.querySelector('.card.total p').textContent = 'Saldo Disponível';
+            
+            filteredTotalsInfo.style.display = 'none';
+        }
+
+        // FUNÇÃO MELHORADA: Renderizar transações com identificação clara de chaves PIX
         function renderizarTransacoes(transacoes) {
             tbody.innerHTML = '';
             
             if (transacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">Nenhuma doação encontrada</td></tr>';
-                transactionsCount.textContent = '0 doações';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">Nenhuma doação encontrada com os filtros aplicados</td></tr>';
+                transactionsCount.textContent = 'Mostrando 0 de 0 doações';
                 return;
             }
             
-            transacoes.forEach(t => {
+            transacoes.forEach(transacao => {
                 const tr = document.createElement('tr');
                 
-                let classeSit = t.situacao === 'Aprovado' ? 'situacao-aprovado' : 'situacao-pendente';
-                let classeIgreja = t.igreja === 'inga' ? 'igreja-inga' : (t.igreja === 'estacao' ? 'igreja-estacao' : 'igreja-zona-leste');
-                let nomeIgreja = t.igreja === 'inga' ? 'Verbo Ingá' : (t.igreja === 'estacao' ? 'Verbo Estação' : (t.igreja === 'zona-leste' ? 'Zona Leste' : 'N/D'));
+                let situacaoClass = '';
+                if (transacao.situacao === 'Aprovado') situacaoClass = 'situacao-aprovado';
+                else if (transacao.situacao === 'Cancelado') situacaoClass = 'situacao-cancelado';
+                else if (transacao.situacao === 'Rejeitado') situacaoClass = 'situacao-cancelado';
+                else situacaoClass = 'situacao-pendente';
                 
-                let infoPix = '-';
-                if(t.metodoPagamento === 'PIX' && t.chavePixUtilizada) {
-                    infoPix = `<span style="font-size:0.8rem; color:${t.chavePixUtilizada.cor || '#666'}">
-                        ${t.chavePixUtilizada.chave} 
-                        ${t.chavePixUtilizada.inferida ? '<i class="fas fa-magic" title="Identificado por inferência"></i>' : ''}
-                    </span>`;
+                let igrejaTexto = '';
+                let igrejaClass = '';
+                if (transacao.igreja === 'inga') {
+                    igrejaTexto = 'Verbo da Vida Ingá';
+                    igrejaClass = 'igreja-inga';
+                } else if (transacao.igreja === 'zona-leste') {
+                    igrejaTexto = 'Verbo da Vida Zona Leste';
+                    igrejaClass = 'igreja-zona-leste';
+                } else if (transacao.igreja === 'estacao') {
+                    igrejaTexto = 'Verbo da Vida Estação';
+                    igrejaClass = 'igreja-estacao';
+                } else {
+                    igrejaTexto = 'Não Identificada';
+                    igrejaClass = 'igreja-nao-identificada';
                 }
-
+                
+                // Informações da chave PIX utilizada
+                let chavePixTexto = '-';
+                let chavePixIcon = '';
+                if (transacao.chavePixUtilizada && transacao.metodoPagamento === 'PIX') {
+                    chavePixTexto = `${transacao.chavePixUtilizada.chave}`;
+                    if (transacao.chavePixUtilizada.tipo === 'email') chavePixIcon = '📧';
+                    else if (transacao.chavePixUtilizada.tipo === 'telefone') chavePixIcon = '📱';
+                    else chavePixIcon = '🔑';
+                } else if (transacao.metodoPagamento === 'PIX') {
+                    chavePixTexto = 'Chave não identificada';
+                }
+                
                 tr.innerHTML = `
-                    <td><span class="situacao-badge ${classeSit}">${t.situacao}</span></td>
-                    <td class="amount ${t.tipo === 'credit' ? 'entrada-amount' : 'saida-amount'}">${formatarValor(t.valor)}</td>
-                    <td>${t.dataHora}</td>
-                    <td>${t.doador}</td>
-                    <td><span class="igreja-badge ${classeIgreja}">${nomeIgreja}</span></td>
-                    <td><span class="payment-method">${t.metodoPagamento}</span></td>
-                    <td><span class="identificador">${t.identificador}</span></td>
-                    <td><span class="id-transacao">${t.idTransacao}</span></td>
-                    <td title="${t.descricao}">${t.descricao.substring(0,25)}${t.descricao.length>25?'...':''}</td>
-                    <td>${infoPix}</td>
+                    <td><span class="situacao-badge ${situacaoClass}">${transacao.situacao}</span></td>
+                    <td class="amount ${transacao.tipo === 'credit' ? 'entrada-amount' : 'saida-amount'}">${formatarValor(transacao.valor)}</td>
+                    <td>${transacao.dataHora}</td>
+                    <td>${transacao.doador}</td>
+                    <td><span class="igreja-badge ${igrejaClass}">${igrejaTexto}</span></td>
+                    <td><span class="payment-method">${transacao.metodoPagamento}</span></td>
+                    <td><span class="identificador">${transacao.identificador}</span></td>
+                    <td><span class="id-transacao">${transacao.idTransacao}</span></td>
+                    <td>${transacao.observacoes || '-'}</td>
+                    <td>${chavePixIcon} ${chavePixTexto}</td>
                 `;
+                
                 tbody.appendChild(tr);
             });
-            transactionsCount.textContent = `${transacoes.length} doações`;
+            
+            transactionsCount.textContent = `Mostrando ${transacoes.length} de ${allTransactions.length} doações`;
         }
 
-        function atualizarTotaisFiltrados(transacoes) {
-            const entradas = transacoes.filter(t => t.tipo === 'credit').reduce((sum, t) => sum + t.valor, 0);
-            const saidas = transacoes.filter(t => t.tipo === 'debit').reduce((sum, t) => sum + t.valor, 0);
+        // FUNÇÃO MELHORADA: Aplicar filtros com sistema inteligente de chaves PIX
+        function aplicarFiltros() {
+            let transacoesFiltradas = [...allTransactions];
             
-            document.querySelector('.card.entrada .value').textContent = formatarValor(entradas);
-            document.querySelector('.card.saida .value').textContent = formatarValor(saidas);
-            document.querySelector('.card.total .value').textContent = formatarValor(entradas - saidas);
+            // Filtro por igreja
+            if (igrejaSelecionada !== 'todas') {
+                transacoesFiltradas = transacoesFiltradas.filter(t => t.igreja === igrejaSelecionada);
+            }
             
-            filteredTotalsInfo.style.display = 'block';
-            filteredTotalsText.textContent = `Totais dos filtros: ${transacoes.length} registros`;
+            if (tipoSelect.value) {
+                transacoesFiltradas = transacoesFiltradas.filter(t => t.tipo === tipoSelect.value);
+            }
+            
+            if (doadorInput.value) {
+                const termo = doadorInput.value.toLowerCase();
+                transacoesFiltradas = transacoesFiltradas.filter(t => 
+                    (t.doador && t.doador.toLowerCase().includes(termo)) ||
+                    (t.descricao && t.descricao.toLowerCase().includes(termo))
+                );
+            }
+            
+            if (tipoDoacaoSelect.value) {
+                transacoesFiltradas = transacoesFiltradas.filter(t => 
+                    t.tipoDoacao === tipoDoacaoSelect.value
+                );
+            }
+            
+            if (valorInput.value) {
+                transacoesFiltradas = transacoesFiltradas.filter(t => 
+                    t.valor >= parseFloat(valorInput.value)
+                );
+            }
+            
+            if (statusSelect.value) {
+                transacoesFiltradas = transacoesFiltradas.filter(t => 
+                    t.status === statusSelect.value
+                );
+            }
+            
+            if (metodoPagamentoSelect.value) {
+                transacoesFiltradas = transacoesFiltradas.filter(t => 
+                    t.metodoPagamento === metodoPagamentoSelect.value
+                );
+            }
+            
+            if (igrejaSelect.value) {
+                transacoesFiltradas = transacoesFiltradas.filter(t => 
+                    t.igreja === igrejaSelect.value
+                );
+            }
+            
+            // FILTRO MELHORADO: Por chave PIX específica
+            if (chavesPixSelecionadas.length > 0) {
+                transacoesFiltradas = transacoesFiltradas.filter(transacao => {
+                    // Apenas transações PIX
+                    if (transacao.metodoPagamento !== 'PIX') return false;
+                    
+                    // Se a transação tem uma chave Pix identificada
+                    if (transacao.chavePixUtilizada && transacao.chavePixUtilizada.chave) {
+                        return chavesPixSelecionadas.includes(transacao.chavePixUtilizada.chave);
+                    }
+                    
+                    return false;
+                });
+            }
+            
+            filteredTransactions = transacoesFiltradas;
+            renderizarTransacoes(filteredTransactions);
+            
+            atualizarTotaisFiltrados(filteredTransactions);
         }
-
-        // --- MANIPULADORES DE EVENTOS ---
 
         function limparFiltros() {
             tipoSelect.value = '';
@@ -1562,16 +1819,12 @@
             statusSelect.value = '';
             metodoPagamentoSelect.value = '';
             igrejaSelect.value = '';
+            
+            // Limpar seleção de chaves PIX
             chavesPixSelecionadas = [];
+            atualizarInterfaceChavesPix();
             
-            // Reseta visual dos checkboxes
-            document.querySelectorAll('.pix-key-option').forEach(el => {
-                el.classList.remove('selected');
-                const cb = el.querySelector('input');
-                if(cb) cb.checked = false;
-            });
-            atualizarContadorChavesSelecionadas();
-            
+            // Reseta datas para o padrão (30 dias)
             const hoje = new Date();
             const trintaDiasAtras = new Date();
             trintaDiasAtras.setDate(hoje.getDate() - 30);
@@ -1579,92 +1832,585 @@
             dataFimInput.value = hoje.toISOString().split('T')[0];
             
             aplicarFiltros();
+            atualizarContadores();
         }
 
+        // FUNÇÃO MELHORADA: Exportar dados com informações de chave PIX
         function exportarDados() {
-            if (filteredTransactions.length === 0) return alert('Sem dados para exportar');
-            let csv = 'Data,Valor,Doador,Igreja,Metodo,Chave PIX,Descricao\n';
-            filteredTransactions.forEach(t => {
-                const chave = t.chavePixUtilizada ? t.chavePixUtilizada.chave : '';
-                csv += `${t.dataHora},"${t.valor.toFixed(2).replace('.',',')}","${t.doador}","${t.igreja}","${t.metodoPagamento}","${chave}","${t.descricao}"\n`;
+            const transacoesParaExportar = filteredTransactions.length > 0 ? filteredTransactions : allTransactions;
+            
+            if (transacoesParaExportar.length === 0) {
+                alert('Não há dados para exportar.');
+                return;
+            }
+            
+            let csv = 'Data,Doador,Valor,Tipo,Igreja,Método Pagamento,Chave PIX Utilizada,Tipo Chave,Identificador,Status,Observações\n';
+            
+            transacoesParaExportar.forEach(transacao => {
+                const chavePix = transacao.chavePixUtilizada ? 
+                    `${transacao.chavePixUtilizada.chave} (${transacao.chavePixUtilizada.tipo})` : 
+                    'N/A';
+                
+                const linha = [
+                    transacao.dataHora.split(' - ')[0],
+                    `"${transacao.doador}"`,
+                    transacao.valor.toFixed(2),
+                    transacao.tipoDoacao === 'dizimo' ? 'Dízimo' : (transacao.tipoDoacao === 'oferta' ? 'Oferta' : 'Outro'),
+                    transacao.igreja === 'inga' ? 'Verbo da Vida Ingá' : 
+                        (transacao.igreja === 'zona-leste' ? 'Verbo da Vida Zona Leste' : 
+                        (transacao.igreja === 'estacao' ? 'Verbo da Vida Estação' : 'Não Identificada')),
+                    transacao.metodoPagamento,
+                    `"${chavePix}"`,
+                    transacao.chavePixUtilizada?.tipo || 'N/A',
+                    transacao.identificador,
+                    transacao.situacao,
+                    `"${transacao.observacoes || ''}"`
+                ].join(',');
+                
+                csv += linha + '\n';
             });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
-            link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
-            link.download = 'relatorio_igreja.csv';
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `doacoes-verbo-da-vida-${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
             link.click();
-        }
-
-        function mostrarErro(msg) {
-            const div = document.createElement('div');
-            div.className = 'error';
-            div.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${msg}`;
-            document.querySelector('.container').insertBefore(div, document.querySelector('.dashboard-cards'));
-            setTimeout(() => div.remove(), 5000);
+            document.body.removeChild(link);
+            
+            alert(`Dados exportados com sucesso! ${transacoesParaExportar.length} registros.`);
         }
 
         function limparMensagens() {
-            document.querySelectorAll('.error, .success').forEach(e => e.remove());
+            const msgs = document.querySelectorAll('.error, .success');
+            msgs.forEach(m => m.remove());
         }
 
-        // Funções para Abas e Histórico (Simplificadas para manter o código limpo)
-        async function carregarHistoricoMensal() {
-             // Reutiliza a busca mas agrupa por mês (Implementação simplificada mantida do original)
-             // Para esta correção focamos no PIX, mas a estrutura de abas está mantida.
-             mostrarErro("Funcionalidade de histórico mantida do original (foco atual: correção PIX)");
+        function mostrarErro(mensagem) {
+            limparMensagens();
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${mensagem}`;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(errorDiv, document.querySelector('.dashboard-cards'));
+            
+            connectionStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Erro na Conexão</span>';
+            connectionStatus.className = 'connection-status status-disconnected';
         }
-        
+
+        function mostrarSucesso(mensagem) {
+            limparMensagens();
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success';
+            successDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${mensagem}`;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(successDiv, document.querySelector('.dashboard-cards'));
+        }
+
+        // FUNÇÃO NOVA: Carregar histórico mensal
+        async function carregarHistoricoMensal() {
+            try {
+                historicoLoading.style.display = 'block';
+                tabelaHistorico.style.display = 'none';
+                
+                const anoSelecionado = anoFiltroSelect.value;
+                const igrejaSelecionada = igrejaFiltroSelect.value;
+                
+                const inicioAno = `${anoSelecionado}-01-01`;
+                const fimAno = `${anoSelecionado}-12-31`;
+                
+                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=1000&range=date_created&begin_date=${inicioAno}T00:00:00Z&end_date=${fimAno}T23:59:59Z`;
+                
+                const dados = await fazerRequisicaoAPI(urlPagamentos);
+                
+                if (dados.results) {
+                    const dadosPorMes = processarDadosPorMes(dados.results, anoSelecionado, igrejaSelecionada);
+                    atualizarGrafico(dadosPorMes);
+                    atualizarTabelaHistorico(dadosPorMes);
+                    
+                    historicoLoading.style.display = 'none';
+                    tabelaHistorico.style.display = 'table';
+                } else {
+                    throw new Error('Nenhum dado encontrado para o período selecionado');
+                }
+                
+            } catch (error) {
+                console.error('Erro ao carregar histórico:', error);
+                historicoLoading.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Erro ao carregar histórico: ${error.message}</div>`;
+            }
+        }
+
+        // FUNÇÃO NOVA: Processar dados por mês
+        function processarDadosPorMes(dados, ano, igrejaFiltro) {
+            const meses = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            
+            const resultado = {};
+            
+            meses.forEach((mes, index) => {
+                const chave = `${index + 1}-${mes}`;
+                resultado[chave] = {
+                    mes: mes,
+                    numeroMes: index + 1,
+                    entradas: 0,
+                    saidas: 0,
+                    saldo: 0,
+                    igreja: igrejaFiltro === 'todas' ? 'Todas' : igrejaFiltro
+                };
+            });
+            
+            dados.forEach(transacao => {
+                const data = new Date(transacao.date_created);
+                const mesNumero = data.getMonth() + 1;
+                const mesNome = meses[data.getMonth()];
+                const chave = `${mesNumero}-${mesNome}`;
+                
+                const tipo = (transacao.status_detail === 'accredited' || transacao.operation_type === 'regular_payment') ? 'entrada' : 'saida';
+                
+                // Identificar igreja
+                let igreja = 'nao-identificada';
+                const chavePixUtilizada = identificarChavePixUtilizada(transacao);
+                if (chavePixUtilizada) {
+                    igreja = identificarIgrejaPorChavePix(chavePixUtilizada);
+                }
+                
+                if (igreja === 'nao-identificada') {
+                    igreja = identificarIgrejaPorTexto(transacao.description || '', '');
+                }
+                
+                if (igrejaFiltro !== 'todas' && igreja !== igrejaFiltro) {
+                    return;
+                }
+                
+                if (tipo === 'entrada') {
+                    resultado[chave].entradas += transacao.transaction_amount || 0;
+                } else if (tipo === 'saida') {
+                    resultado[chave].saidas += transacao.transaction_amount || 0;
+                }
+                
+                resultado[chave].saldo = resultado[chave].entradas - resultado[chave].saidas;
+            });
+            
+            return Object.values(resultado);
+        }
+
+        // FUNÇÃO NOVA: Atualizar gráfico
+        function atualizarGrafico(dados) {
+            graficoBarras.innerHTML = '';
+            
+            const maxEntrada = Math.max(...dados.map(d => d.entradas));
+            const maxSaida = Math.max(...dados.map(d => d.saidas));
+            const maxValor = Math.max(maxEntrada, maxSaida);
+            
+            dados.forEach(mes => {
+                const barraMes = document.createElement('div');
+                barraMes.className = 'barra-mes';
+                
+                const alturaMaxima = 250;
+                const alturaEntrada = maxValor > 0 ? (mes.entradas / maxValor) * alturaMaxima : 0;
+                const alturaSaida = maxValor > 0 ? (mes.saidas / maxValor) * alturaMaxima : 0;
+                
+                barraMes.innerHTML = `
+                    <div class="barra-container">
+                        <div class="barra-entrada" style="height: ${alturaEntrada}px" title="Entradas: ${formatarValor(mes.entradas)}"></div>
+                        <div class="barra-saida" style="height: ${alturaSaida}px" title="Saídas: ${formatarValor(mes.saidas)}"></div>
+                    </div>
+                    <div class="mes-label">${mes.mes.substring(0, 3)}</div>
+                `;
+                
+                graficoBarras.appendChild(barraMes);
+            });
+        }
+
+        // FUNÇÃO NOVA: Atualizar tabela de histórico
+        function atualizarTabelaHistorico(dados) {
+            const tbody = tabelaHistorico.querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            let totalEntradas = 0;
+            let totalSaidas = 0;
+            let totalSaldo = 0;
+            
+            dados.forEach(mes => {
+                const tr = document.createElement('tr');
+                
+                tr.innerHTML = `
+                    <td>${mes.mes}/${anoFiltroSelect.value}</td>
+                    <td class="entrada-amount">${formatarValor(mes.entradas)}</td>
+                    <td class="saida-amount">${formatarValor(mes.saidas)}</td>
+                    <td class="${mes.saldo >= 0 ? 'entrada-amount' : 'saida-amount'}">${formatarValor(mes.saldo)}</td>
+                    <td>${mes.igreja}</td>
+                `;
+                
+                tbody.appendChild(tr);
+                
+                totalEntradas += mes.entradas;
+                totalSaidas += mes.saidas;
+                totalSaldo += mes.saldo;
+            });
+            
+            const trTotal = document.createElement('tr');
+            trTotal.style.fontWeight = 'bold';
+            trTotal.style.backgroundColor = 'var(--light)';
+            
+            trTotal.innerHTML = `
+                <td>TOTAL</td>
+                <td class="entrada-amount">${formatarValor(totalEntradas)}</td>
+                <td class="saida-amount">${formatarValor(totalSaidas)}</td>
+                <td class="${totalSaldo >= 0 ? 'entrada-amount' : 'saida-amount'}">${formatarValor(totalSaldo)}</td>
+                <td>${igrejaFiltroSelect.value === 'todas' ? 'Todas' : igrejaFiltroSelect.value}</td>
+            `;
+            
+            tbody.appendChild(trTotal);
+            
+            historicoCount.textContent = `Mostrando dados de ${anoFiltroSelect.value}`;
+        }
+
+        // FUNÇÃO NOVA: Gerar relatório PIX
+        async function gerarRelatorioPIX() {
+            try {
+                const periodo = relatorioPeriodoSelect.value;
+                let dataInicio, dataFim;
+                
+                const hoje = new Date();
+                if (periodo === 'custom') {
+                    dataInicio = new Date(document.getElementById('relatorio-data-inicio').value);
+                    dataFim = new Date(document.getElementById('relatorio-data-fim').value);
+                } else {
+                    dataFim = new Date();
+                    dataInicio = new Date();
+                    dataInicio.setDate(dataInicio.getDate() - parseInt(periodo));
+                }
+                
+                const dataInicioStr = dataInicio.toISOString().split('T')[0];
+                const dataFimStr = dataFim.toISOString().split('T')[0];
+                
+                const urlPagamentos = `${API_BASE_URL}/v1/payments/search?sort=date_created&criteria=desc&limit=1000&range=date_created&begin_date=${dataInicioStr}T00:00:00Z&end_date=${dataFimStr}T23:59:59Z`;
+                
+                const dados = await fazerRequisicaoAPI(urlPagamentos);
+                
+                if (dados.results) {
+                    const transacoesPIX = dados.results.filter(t => 
+                        t.payment_method_id === 'pix' || 
+                        t.description?.toLowerCase().includes('pix')
+                    );
+                    
+                    atualizarRelatorioPIX(transacoesPIX, dataInicioStr, dataFimStr);
+                }
+                
+            } catch (error) {
+                console.error('Erro ao gerar relatório PIX:', error);
+                mostrarErro(`Erro ao gerar relatório: ${error.message}`);
+            }
+        }
+
+        // FUNÇÃO NOVA: Atualizar relatório PIX
+        function atualizarRelatorioPIX(transacoesPIX, dataInicio, dataFim) {
+            // Agrupar por chave PIX
+            const porChave = {};
+            
+            transacoesPIX.forEach(transacao => {
+                const chavePixUtilizada = identificarChavePixUtilizada(transacao);
+                if (chavePixUtilizada) {
+                    const chave = chavePixUtilizada.chave;
+                    
+                    if (!porChave[chave]) {
+                        porChave[chave] = {
+                            chave: chave,
+                            igreja: chavePixUtilizada.nomeIgreja || 'Não Identificada',
+                            tipo: chavePixUtilizada.tipo,
+                            cor: chavePixUtilizada.cor,
+                            total: 0,
+                            count: 0,
+                            ultimaData: null,
+                            transacoes: []
+                        };
+                    }
+                    
+                    porChave[chave].total += transacao.transaction_amount || 0;
+                    porChave[chave].count++;
+                    
+                    const dataTransacao = new Date(transacao.date_created);
+                    if (!porChave[chave].ultimaData || dataTransacao > porChave[chave].ultimaData) {
+                        porChave[chave].ultimaData = dataTransacao;
+                    }
+                    
+                    porChave[chave].transacoes.push(transacao);
+                }
+            });
+            
+            // Calcular totais gerais
+            const chavesArray = Object.values(porChave);
+            const totalGeral = chavesArray.reduce((sum, chave) => sum + chave.total, 0);
+            const totalTransacoes = chavesArray.reduce((sum, chave) => sum + chave.count, 0);
+            
+            // Atualizar cartões de estatísticas
+            pixStatsCards.innerHTML = `
+                <div class="card">
+                    <h3>Total Recebido via PIX</h3>
+                    <div class="value" style="color: var(--estacao);">${formatarValor(totalGeral)}</div>
+                    <p>Período: ${dataInicio} a ${dataFim}</p>
+                </div>
+                <div class="card">
+                    <h3>Total de Transações PIX</h3>
+                    <div class="value" style="color: var(--primary);">${totalTransacoes}</div>
+                    <p>${chavesArray.length} chave(s) utilizada(s)</p>
+                </div>
+                <div class="card">
+                    <h3>Ticket Médio PIX</h3>
+                    <div class="value" style="color: var(--success);">${formatarValor(totalGeral / totalTransacoes)}</div>
+                    <p>Valor médio por transação</p>
+                </div>
+            `;
+            
+            pixStatsCards.style.display = 'grid';
+            
+            // Atualizar gráfico
+            atualizarGraficoPIX(chavesArray);
+            
+            // Atualizar tabela de detalhes
+            atualizarTabelaRelatorioPIX(chavesArray);
+            
+            // Mostrar containers
+            pixChartContainer.style.display = 'block';
+            pixDetalhesContainer.style.display = 'block';
+            
+            pixDetalhesCount.textContent = `${totalTransacoes} transações PIX`;
+        }
+
+        // FUNÇÃO NOVA: Atualizar gráfico PIX
+        function atualizarGraficoPIX(chavesArray) {
+            pixChart.innerHTML = '';
+            
+            // Ordenar por total recebido
+            chavesArray.sort((a, b) => b.total - a.total);
+            
+            // Pegar apenas as top 5 para o gráfico
+            const topChaves = chavesArray.slice(0, 5);
+            
+            // Encontrar valor máximo para escala
+            const maxValor = Math.max(...topChaves.map(c => c.total));
+            
+            topChaves.forEach(chave => {
+                const barraContainer = document.createElement('div');
+                barraContainer.className = 'barra-mes';
+                barraContainer.style.flex = '1';
+                
+                const altura = maxValor > 0 ? (chave.total / maxValor) * 200 : 0;
+                
+                barraContainer.innerHTML = `
+                    <div class="barra-container" style="justify-content: end;">
+                        <div class="barra-entrada" style="height: ${altura}px; background-color: ${chave.cor};" 
+                             title="${chave.chave}: ${formatarValor(chave.total)}"></div>
+                    </div>
+                    <div class="mes-label" style="font-size: 0.7rem;">${chave.chave.substring(0, 6)}...</div>
+                `;
+                
+                pixChart.appendChild(barraContainer);
+            });
+        }
+
+        // FUNÇÃO NOVA: Atualizar tabela de relatório PIX
+        function atualizarTabelaRelatorioPIX(chavesArray) {
+            pixDetalhesBody.innerHTML = '';
+            
+            // Ordenar por total recebido (decrescente)
+            chavesArray.sort((a, b) => b.total - a.total);
+            
+            chavesArray.forEach(chave => {
+                const tr = document.createElement('tr');
+                
+                // Determinar classe da igreja
+                let igrejaClass = '';
+                if (chave.igreja.includes('Ingá')) igrejaClass = 'igreja-inga';
+                else if (chave.igreja.includes('Zona Leste')) igrejaClass = 'igreja-zona-leste';
+                else if (chave.igreja.includes('Estação')) igrejaClass = 'igreja-estacao';
+                else igrejaClass = 'igreja-nao-identificada';
+                
+                // Calcular ticket médio
+                const ticketMedio = chave.count > 0 ? chave.total / chave.count : 0;
+                
+                // Formatar última data
+                const ultimaDataFormatada = chave.ultimaData ? 
+                    chave.ultimaData.toLocaleDateString('pt-BR') : 'N/A';
+                
+                tr.innerHTML = `
+                    <td><strong>${chave.chave}</strong><br><small>${chave.tipo}</small></td>
+                    <td><span class="igreja-badge ${igrejaClass}">${chave.igreja}</span></td>
+                    <td class="entrada-amount">${formatarValor(chave.total)}</td>
+                    <td>${chave.count}</td>
+                    <td>${formatarValor(ticketMedio)}</td>
+                    <td>${ultimaDataFormatada}</td>
+                    <td>
+                        <button class="toggle-pix-filter" onclick="filtrarPorChavePIX('${chave.chave}')">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
+                    </td>
+                `;
+                
+                pixDetalhesBody.appendChild(tr);
+            });
+        }
+
+        // FUNÇÃO NOVA: Filtrar por chave PIX específica
         function filtrarPorChavePIX(chave) {
+            // Mudar para aba dashboard
             tabs.forEach(t => t.classList.remove('active'));
             tabContents.forEach(c => c.classList.remove('active'));
+            
             document.querySelector('[data-tab="dashboard"]').classList.add('active');
             document.getElementById('dashboard-content').classList.add('active');
             
-            limparFiltros();
-            
-            // Seleciona a chave programaticamente
+            // Selecionar a chave
             chavesPixSelecionadas = [chave];
-            const checkbox = document.querySelector(`input[type="checkbox"]`); 
-            // Nota: Seletor simplificado, na prática iteraria para achar o ID correto se necessário
+            atualizarInterfaceChavesPix();
             
-            atualizarInterfaceChavesPix(); // Re-renderiza para mostrar seleção
+            // Aplicar filtros
             aplicarFiltros();
+            
+            // Scroll para o topo
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            mostrarSucesso(`Filtrando transações da chave PIX: ${chave}`);
         }
 
-        // Listeners
-        loginForm.addEventListener('submit', (e) => {
+        // FUNÇÃO NOVA: Exportar relatório PIX como PDF (simulação)
+        function exportarRelatorioPIX() {
+            alert('Funcionalidade de exportação PDF em desenvolvimento. Por enquanto, use a exportação CSV na aba Dashboard.');
+        }
+
+        // FUNÇÃO NOVA: Limpar relatório
+        function limparRelatorio() {
+            pixStatsCards.style.display = 'none';
+            pixChartContainer.style.display = 'none';
+            pixDetalhesContainer.style.display = 'none';
+            relatorioPeriodoSelect.value = '30';
+            relatorioDataCustom.style.display = 'none';
+            relatorioDataCustomFim.style.display = 'none';
+        }
+
+        // Event listeners para login
+        loginForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            if(fazerLogin(usernameInput.value, passwordInput.value)){
+            
+            const usuario = usernameInput.value.trim();
+            const senha = passwordInput.value;
+            
+            if (fazerLogin(usuario, senha)) {
+                loginError.style.display = 'none';
                 loginScreen.style.display = 'none';
                 mainSystem.style.display = 'block';
+                
                 buscarMovimentos();
             } else {
                 loginError.style.display = 'block';
+                passwordInput.value = '';
+                passwordInput.focus();
             }
         });
 
+        // Event listeners do sistema
         aplicarFiltrosBtn.addEventListener('click', aplicarFiltros);
         limparFiltrosBtn.addEventListener('click', limparFiltros);
         atualizarDadosBtn.addEventListener('click', buscarMovimentos);
         exportarDadosBtn.addEventListener('click', exportarDados);
-        refreshPixKeysBtn.addEventListener('click', async () => {
-             refreshPixKeysBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-             await buscarMinhasChavesPix();
-             refreshPixKeysBtn.innerHTML = '<i class="fas fa-redo"></i> Atualizar Chaves';
+        
+        // Event listener para atualizar chaves PIX
+        refreshPixKeysBtn.addEventListener('click', async function() {
+            try {
+                refreshPixKeysBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+                refreshPixKeysBtn.disabled = true;
+                
+                await buscarMinhasChavesPix();
+                
+                refreshPixKeysBtn.innerHTML = '<i class="fas fa-redo"></i> Atualizar Chaves';
+                refreshPixKeysBtn.disabled = false;
+                
+                mostrarSucesso('Chaves PIX atualizadas com sucesso!');
+            } catch (error) {
+                console.error('Erro ao atualizar chaves PIX:', error);
+                refreshPixKeysBtn.innerHTML = '<i class="fas fa-redo"></i> Atualizar Chaves';
+                refreshPixKeysBtn.disabled = false;
+                mostrarErro('Erro ao atualizar chaves PIX: ' + error.message);
+            }
         });
 
-        // Toggle Abas
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active'));
-                tabContents.forEach(c => c.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`${tab.dataset.tab}-content`).classList.add('active');
+        // Event listener para período personalizado no relatório
+        relatorioPeriodoSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                relatorioDataCustom.style.display = 'block';
+                relatorioDataCustomFim.style.display = 'block';
+            } else {
+                relatorioDataCustom.style.display = 'none';
+                relatorioDataCustomFim.style.display = 'none';
+            }
+        });
+
+        // Event listeners para relatórios
+        gerarRelatorioPixBtn.addEventListener('click', gerarRelatorioPIX);
+        exportarRelatorioPixBtn.addEventListener('click', exportarRelatorioPIX);
+        limparRelatorioBtn.addEventListener('click', limparRelatorio);
+
+        // Seleção de igreja
+        const churchButtons = document.querySelectorAll('.church-btn');
+        churchButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                churchButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                igrejaSelecionada = this.getAttribute('data-church');
+                aplicarFiltros();
             });
         });
 
-        document.addEventListener('DOMContentLoaded', () => usernameInput.focus());
-        window.filtrarPorChavePIX = filtrarPorChavePIX; // Torna global
+        // Filtros dinâmicos
+        doadorInput.addEventListener('input', aplicarFiltros);
+        tipoSelect.addEventListener('change', aplicarFiltros);
+        tipoDoacaoSelect.addEventListener('change', aplicarFiltros);
+        statusSelect.addEventListener('change', aplicarFiltros);
+        metodoPagamentoSelect.addEventListener('change', aplicarFiltros);
+        igrejaSelect.addEventListener('change', aplicarFiltros);
+
+        // Event listeners para as abas
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(`${tabId}-content`).classList.add('active');
+                
+                if (tabId === 'historico') {
+                    carregarHistoricoMensal();
+                } else if (tabId === 'relatorios') {
+                    // Inicializar datas para relatório
+                    const hoje = new Date();
+                    const trintaDiasAtras = new Date();
+                    trintaDiasAtras.setDate(hoje.getDate() - 30);
+                    
+                    document.getElementById('relatorio-data-inicio').value = trintaDiasAtras.toISOString().split('T')[0];
+                    document.getElementById('relatorio-data-fim').value = hoje.toISOString().split('T')[0];
+                }
+            });
+        });
+
+        // Event listener para o filtro de histórico
+        aplicarFiltroHistoricoBtn.addEventListener('click', carregarHistoricoMensal);
+
+        // Inicialização - Foca no campo de usuário
+        document.addEventListener('DOMContentLoaded', () => {
+            usernameInput.focus();
+            
+            // Expor funções globais
+            window.filtrarPorChavePIX = filtrarPorChavePIX;
+        });
     </script>
 </body>
 </html>
-
