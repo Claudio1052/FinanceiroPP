@@ -900,20 +900,25 @@
     </div>
 
     <script>
-        // Configuração
-        const SUPABASE_URL = 'https://nekbbkenxcukoortusge.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5la2Jia2VueGN1a29vcnR1c2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzOTU5MDIsImV4cCI6MjA3ODk3MTkwMn0.D72914Vyz1du1ZDKoNDdwT7YI-D8WPgZe38LbBV2bfc';
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        const ACCESS_TOKEN = 'APP_USR-7942402403468023-112215-a0799e629a61e1568f394d40728fed58-674529245';
-        const API_BASE_URL = 'https://api.mercadopago.com';
+       // Configuração
+const SUPABASE_URL = 'https://nekbbkenxcukoortusge.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5la2Jia2VueGN1a29vcnR1c2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzOTU5MDIsImV4cCI6MjA3ODk3MTkwMn0.D72914Vyz1du1ZDKoNDdwT7YI-D8WPgZe38LbBV2bfc';
 
-        // CHAVES PIX PADRÃO (HARDCODED) - PRIORIDADE
-        const CHAVES_PIX_INICIAIS = [
-            { chave: '83991993505', tipo: 'telefone', igreja: 'inga' },
-            { chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' }
-        ];
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// CREDENCIAIS ATUALIZADAS CONFORME A IMAGEM
+const ACCESS_TOKEN = 'APP_USR-3929351282620248-120517-92920078fe41ba548e4ae65fe958108c-270554505';
+const CLIENT_ID = '3929351282620248';
+const CLIENT_SECRET = '4jYiYiqIbbiOoeZKOGIIFSrqe025FcK';
+const PUBLIC_KEY = 'APP_USR-5574425-2804-468f-9864-5678ba581779';
+
+const API_BASE_URL = 'https://api.mercadopago.com';
+
+// CHAVES PIX PADRÃO (HARDCODED) - PRIORIDADE
+const CHAVES_PIX_INICIAIS = [
+    { chave: '83991993505', tipo: 'telefone', igreja: 'inga' },
+    { chave: 'financeiro@verboestacao.com', tipo: 'email', igreja: 'estacao' }
+];
 
         // Elementos DOM
         const loginScreen = document.getElementById('loginScreen');
@@ -1961,4 +1966,5 @@
     </script>
 </body>
 </html>
+
 
