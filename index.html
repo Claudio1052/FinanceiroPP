@@ -25,99 +25,6 @@
         body { background-color: #f8f9fa; color: var(--dark); line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         
-        /* TELA DE LOGIN */
-        .login-screen {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-        }
-        
-        .login-container {
-            background: white;
-            border-radius: 10px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-        
-        .login-logo {
-            margin-bottom: 30px;
-        }
-        
-        .login-logo img {
-            height: 80px;
-            margin-bottom: 15px;
-        }
-        
-        .login-logo h1 {
-            font-size: 1.5rem;
-            color: var(--dark);
-            margin-bottom: 5px;
-        }
-        
-        .login-logo p {
-            color: var(--gray);
-            font-size: 0.9rem;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--dark);
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid var(--border);
-            border-radius: 5px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-        
-        .form-group input:focus {
-            border-color: var(--primary);
-            outline: none;
-        }
-        
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            margin-top: 10px;
-        }
-        
-        .login-btn:hover {
-            background-color: var(--primary-light);
-        }
-        
-        .login-error {
-            background-color: rgba(220, 53, 69, 0.1);
-            color: var(--danger);
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 15px;
-            font-size: 0.9rem;
-            display: none;
-        }
-        
         /* HEADER ATUALIZADO */
         header { 
             background: linear-gradient(135deg, var(--primary), var(--primary-light)); 
@@ -453,43 +360,8 @@
     </style>
 </head>
 <body>
-    <!-- TELA DE LOGIN -->
-    <div class="login-screen" id="loginScreen">
-        <div class="login-container">
-            <div class="login-logo">
-                <img src="https://nekbbkenxcukoortusge.supabase.co/storage/v1/object/public/imagens2/produtos/logo.png" alt="Verbo da Vida">
-                <h1>Sistema de Dízimos e Ofertas</h1>
-                <p>Verbo da Vida - Acesso Restrito</p>
-            </div>
-            
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="username">Usuário</label>
-                    <input type="text" id="username" placeholder="Digite seu usuário" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Senha</label>
-                    <input type="password" id="password" placeholder="Digite sua senha" required>
-                </div>
-                
-                <button type="submit" class="login-btn">
-                    <i class="fas fa-sign-in-alt"></i> Entrar no Sistema
-                </button>
-                
-                <div class="login-error" id="loginError">
-                    <i class="fas fa-exclamation-triangle"></i> Usuário ou senha incorretos
-                </div>
-            </form>
-            
-            <div style="margin-top: 20px; font-size: 0.8rem; color: var(--gray);">
-            
-            </div>
-        </div>
-    </div>
-    
-    <!-- SISTEMA PRINCIPAL (OCULTO INICIALMENTE) -->
-    <div id="mainSystem" style="display: none;">
+    <!-- SISTEMA PRINCIPAL -->
+    <div id="mainSystem">
         <header>
             <div class="container">
                 <div class="header-content">
@@ -756,13 +628,7 @@
         const API_BASE_URL = 'https://api.mercadopago.com';
 
         // Elementos DOM
-        const loginScreen = document.getElementById('loginScreen');
         const mainSystem = document.getElementById('mainSystem');
-        const loginForm = document.getElementById('loginForm');
-        const loginError = document.getElementById('loginError');
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
-        
         const aplicarFiltrosBtn = document.getElementById('aplicar-filtros');
         const limparFiltrosBtn = document.getElementById('limpar-filtros');
         const atualizarDadosBtn = document.getElementById('atualizar-dados');
@@ -781,7 +647,6 @@
         const table = document.querySelector('table');
         const tbody = document.querySelector('tbody');
         const connectionStatus = document.querySelector('.connection-status');
-        const userInfoText = document.getElementById('user-info-text');
         const churchButtons = document.querySelectorAll('.church-btn');
         
         // NOVOS ELEMENTOS PARA OS TOTAIS FILTRADOS
@@ -805,17 +670,7 @@
         let saldoGeral = 0; // Variável para armazenar o saldo geral
         let igrejaSelecionada = 'todas';
 
-        // Função de login
-        function fazerLogin(usuario, senha) {
-            // Credenciais de demonstração
-            const usuariosValidos = {
-                'admin': 'verbo2025',
-                'financeiro': 'verbofin2025',
-                'pastor': 'verbopastor2025'
-            };
-            
-            return usuariosValidos[usuario] === senha;
-        }
+        // Função de login REMOVIDA
 
         // Formatar valor para Real brasileiro
         function formatarValor(valor) {
@@ -868,10 +723,6 @@
                 // Primeiro pega dados do usuário para tentar "adivinhar" chaves se a API de chaves falhar
                 const userInfo = await fazerRequisicaoAPI(`${API_BASE_URL}/v1/users/me`);
                 
-                if (userInfo.first_name) {
-                    userInfoText.textContent = `${userInfo.first_name} ${userInfo.last_name || ''}`;
-                }
-
                 // Tenta buscar endpoint oficial de Chaves PIX (Muitas vezes restrito)
                 // Se falhar, montamos chaves "virtuais" baseadas no email/cpf do usuário para não quebrar o script
                 try {
@@ -1568,29 +1419,6 @@
             historicoCount.textContent = `Mostrando dados de ${anoFiltroSelect.value}`;
         }
 
-        // Event listeners para login
-        loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const usuario = usernameInput.value.trim();
-            const senha = passwordInput.value;
-            
-            if (fazerLogin(usuario, senha)) {
-                // Login bem-sucedido
-                loginError.style.display = 'none';
-                loginScreen.style.display = 'none';
-                mainSystem.style.display = 'block';
-                
-                // Inicializa o sistema
-                buscarMovimentos();
-            } else {
-                // Login falhou
-                loginError.style.display = 'block';
-                passwordInput.value = '';
-                passwordInput.focus();
-            }
-        });
-
         // Event listeners do sistema
         aplicarFiltrosBtn.addEventListener('click', aplicarFiltros);
         limparFiltrosBtn.addEventListener('click', limparFiltros);
@@ -1637,9 +1465,9 @@
         // Event listener para o filtro de histórico
         aplicarFiltroHistoricoBtn.addEventListener('click', carregarHistoricoMensal);
 
-        // Inicialização - Foca no campo de usuário
+        // Inicialização - Carrega os dados automaticamente
         document.addEventListener('DOMContentLoaded', () => {
-            usernameInput.focus();
+            buscarMovimentos();
         });
     </script>
 </body>
